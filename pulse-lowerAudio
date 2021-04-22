@@ -1,0 +1,2 @@
+#! /bin/sh
+/usr/bin/pulseaudio-ctl down && pkill -RTMIN+10 dwmblocks

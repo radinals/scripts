@@ -1,0 +1,3 @@
+#!/bin/sh
+cmus-remote -n 
+pkill -RTMIN+5 dwmblocks

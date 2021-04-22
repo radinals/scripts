@@ -1,0 +1,27 @@
+#!/bin/bash
+IMG_PATH=~/Screenshot/
+TIME=$(date '+%H-%M-%S@%d-%m-%Y')
+Name_Format="maim-$TIME.png"
+TIME=3000 #Miliseconds notification should remain visible
+QUALITY=1
+FORMAT=png
+
+prog="
+1.quick-fullscreen
+2.delayed-fullscreen
+3.section
+4.view-screenshots
+"
+cmd=$(dmenu -p 'Choose Screenshot Type' <<< "$prog")
+
+cd $IMG_PATH
+case ${cmd%% *} in
+
+    1.quick-fullscreen) maim -u -f $FORMAT -m $QUALITY $IMG_PATH$Name_Format && notify-send -u low -t $TIME 'Maim' 'Fullscreen taken and saved' ;;
+    2.delayed-fullscreen) maim -u -d 4 -f $FORMAT -m $QUALITY $IMG_PATH$Name_Format && notify-send -u low -t $TIME 'Maim' 'Fullscreen Screenshot saved' ;;
+    3.section) maim -u -s -f $FORMAT -m $QUALITY $IMG_PATH$Name_Format && notify-send -u low -t $TIME 'Maim' 'Screenshot of section saved' ;;
+    4.view-screenshots) sxiv -t ~/Screenshot ;;
+
+    *)  exec "'${cmd}'"  ;;
+esac
+

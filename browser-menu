@@ -1,0 +1,21 @@
+#!/bin/bash
+prog="
+Chromium
+Firefox
+TorBrowser
+FreeTube
+"
+
+cmd=$(dmenu -i -p 'Choose a Program' <<< "$prog")
+
+cd $IMG_PATH
+case ${cmd%% *} in
+
+	Chromium)chromium &	;;
+	Firefox)firefox & ;;
+	TorBrowser)torbrowser-launcher & ;;
+	FreeTube)freetube-bin & ;;
+
+  	*)		exec "'${cmd}'"  ;;
+esac
+

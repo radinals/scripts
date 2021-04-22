@@ -1,0 +1,23 @@
+#!/bin/bash
+prog="
+1.fastest-server
+2.random-server
+3.reconnect
+4.disconnect
+5.status
+"
+
+cmd=$(dmenu -p 'VPN Options: ' <<< "$prog")
+
+cd $IMG_PATH
+case ${cmd%% *} in
+
+  1.fastest-server) st -c 'password' -g 50x10 -e sudo protonvpn c -f ;;
+  2.random-server) st -c 'password' -g 50x10 -e sudo protonvpn c -r ;;
+  3.reconnect) st -c 'password' -g 50x10 -e sudo protonvpn reconnect ;;
+  4.disconnect) st -c 'password' -g 50x10 -e sudo protonvpn d && notify-send "Disconnected" ;;
+  5.status) $HOME/.scripts/vpn ;;
+
+  	*)		exec "'${cmd}'"  ;;
+esac
+
