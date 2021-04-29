@@ -1,3 +1,0 @@
-#! /bin/sh
-cmus-remote -v +5%
-pkill -RTMIN+10 dwmblocks

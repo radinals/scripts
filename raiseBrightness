@@ -1,2 +1,0 @@
-#! /bin/sh 
-brightnessctl -c backlight s 50+
