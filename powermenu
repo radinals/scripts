@@ -9,7 +9,7 @@ prog="
 
 cmd=$(dmenu -i -p 'Choose a Power Option: ' <<< "$prog")
 
-cd $IMG_PATH
+cd "$IMG_PATH"
 case ${cmd%% *} in
 
 	1.poweroff) poweroff ;;

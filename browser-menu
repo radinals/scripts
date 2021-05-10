@@ -1,6 +1,6 @@
 #!/bin/bash
 prog="
-Chromium
+Librewolf
 Firefox
 TorBrowser
 FreeTube
@@ -8,11 +8,11 @@ FreeTube
 
 cmd=$(dmenu -i -p 'Choose a Program' <<< "$prog")
 
-cd $IMG_PATH
+cd "$IMG_PATH" || exit
 case ${cmd%% *} in
 
-	Chromium)chromium &	;;
 	Firefox)firefox & ;;
+	Librewolf)librewolf &	;;
 	TorBrowser)torbrowser-launcher & ;;
 	FreeTube)freetube-bin & ;;
 
