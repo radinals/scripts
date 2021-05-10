@@ -1,3 +1,3 @@
-# Personal Scripts Repo
+# Dmenu Scripts 
 
-The scripts here is mostley needed for my dwm build.
+Just basic dmenu scripts
