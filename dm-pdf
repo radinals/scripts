@@ -1,25 +1,22 @@
 #!/bin/sh
 
-library_dir="$HOME/Documents/Books"
-dm_cmd="dmenu -l 10 -p"
+# Where the books is stored.
+library="$HOME/Documents/Books"
+
+# Extra Variables
+dm_cmd="dmenu -i -l 15 -p"
 pdf_reader="zathura"
 
-cmd=$( $dm_cmd "Choose a Category! " <<< $(ls $library_dir))
+# List the categories in the library directory.
+category=$( $dm_cmd "Choose a Category! " <<< $(ls "$library") )
 
-if [[ "$cmd" == "Coding" ]]; then
-  content_0=$( $dm_cmd "Choose a Category! " <<< $( ls "$library_dir/$cmd" ))
-  if [ "$content_0" ]; then
-    content_1=$( $dm_cmd "Choose a Book! " <<< $( ls "$library_dir/$cmd/$content_0" ))
-    if [ "$content_1" ]; then
-      $pdf_reader "$library_dir/$cmd/$content_0/$content_1" &
-      exit 0
-    fi
-  fi
-
-elif [ "$cmd" ]; then
-  content_0=$( $dm_cmd "Choose a Book! " <<< $(ls "$library_dir/$cmd"))
-  if [ "$content_0" ]; then
-    $pdf_reader "$library_dir/$cmd/$content_0" &
+# If a category has been selected then list the related books.
+if [ "$category" ]; then
+  book=$( $dm_cmd "Choose a Book! " <<< $(ls "$library/$category") )
+  # If A book has been selected then open it.
+  if [ "$book" ]; then
+    # Open the book and then exit.
+    $pdf_reader "$library/$category/$book" &
     exit 0
   fi
 fi
