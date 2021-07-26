@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+WP_DIR=$1
+WP_SETTER="hsetroot -cover"
+
+if [[ -x "$WP_DIR" ]]; then # Check if the Wallpaper directory exists.
+    WP_ARRAY=($(ls -x $WP_DIR)) # generate an index of files.
+    RANDOM_INDEX=$(($RANDOM % ${#WP_ARRAY[@]} + 0)) # choose from an array by a randomized index.
+    $WP_SETTER "$WP_DIR/${WP_ARRAY[$RANDOM_INDEX]}" && exit 0 # set it then exit
+else
+    notify-send "RandoWall" "Setting Wallpaper Failed!..." && exit 
+fi

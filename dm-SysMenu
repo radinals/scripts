@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+OPTIONS=(
+    "1.wifi-bluetooth_status"
+    "2.toggle_wifi"
+    "3.turn_off_wifi"
+    "4.toggle_bluetooth"
+    "5.turn_off_bluetooth"
+    "6.nmtui"
+    "7.lockscreen"
+    "8.tty"
+    "9.reboot"
+    "10.poweroff"
+)
+
+CMD=$(printf '%s\n' ${OPTIONS[@]} | dmenu -i -c -g 2 -l 5 -p 'Options: ')
+case ${CMD%% *} in
+
+    1.wifi-bluetooth_status) notify-send "Current Status:" "Wifi: $(wifi | awk '{print $3}') | Bluetooth: $(bluetooth | awk '{print $3}')" ;;
+    2.toggle_wifi) wifi toggle ;;
+    3.turn_off_wifi) wifi off ;;
+    4.toggle_bluetooth) bluetooth toggle ;;
+    5.turn_off_bluetooth) bluetooth off ;;
+    6.nmtui) alacritty -e nmtui & ;;
+	7.lockscreen) /usr/bin/xsecurelock ;;
+	8.tty) pkill -15 Xorg ;;
+	9.reboot) reboot ;;
+	10.poweroff) poweroff ;;
+
+    *)		exec "'${CMD}'"  ;;
+esac
