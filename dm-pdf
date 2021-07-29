@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Where the books is stored.
+library="$HOME/Documents/Books"
+
+# Extra Variables
+dm_cmd="dmenu -i -l 15 -p"
+pdf_reader="zathura"
+
+# List the categories in the library directory.
+# category=$( $dm_cmd "Choose a Category! " <<< "$(ls "$library")" )
+# this might not yet optimized.. maybe, need more research on "GNU find".
+category=$( find "$library" -type d \( ! -iname ".*" \) | awk -F '/' '{print $6}' | awk NF | sort |  $dm_cmd "Choose a Category! " )
+
+# If a category has been selected then list the related books.
+if [ "$category" ]; then
+  title=$( find "$library/$category" -type f \( ! -iname ".*" \) | awk -F '/' '{print $7}' | awk NF | sort | $dm_cmd "Choose a Book! " )
+  # If A book has been selected then open it.
+  if [ "$book" ]; then
+    # Open the book and then exit.
+    $pdf_reader "$library/$category/$title" && exit 0
+  fi
+fi
