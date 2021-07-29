@@ -16,7 +16,7 @@ category=$( find "$library" -type d \( ! -iname ".*" \) | awk -F '/' '{print $6}
 if [ "$category" ]; then
   title=$( find "$library/$category" -type f \( ! -iname ".*" \) | awk -F '/' '{print $7}' | awk NF | sort | $dm_cmd "Choose a Book! " )
   # If A book has been selected then open it.
-  if [ "$book" ]; then
+  if [ "$title" ]; then
     # Open the book and then exit.
     $pdf_reader "$library/$category/$title" && exit 0
   fi
