@@ -6,6 +6,7 @@ library="$HOME/Documents/Books"
 # Extra Variables
 dm_cmd="dmenu -i -l 15 -p"
 pdf_reader="zathura"
+epub_reader="mupdf"
 
 # List the categories in the library directory.
 # category=$( $dm_cmd "Choose a Category! " <<< "$(ls "$library")" )
@@ -17,7 +18,12 @@ if [ "$category" ]; then
   title=$( find "$library/$category" -type f \( ! -iname ".*" \) | awk -F '/' '{print $7}' | awk NF | sort | $dm_cmd "Choose a Book! " )
   # If A book has been selected then open it.
   if [ "$title" ]; then
-    # Open the book and then exit.
-    $pdf_reader "$library/$category/$title" && exit 0
+      FILETYPE=$(file -b "$library/$category/$title" | awk -F " " '{print $1'})
+      # Open the book and then exit.
+      if [ $FILETYPE == "EPUB" ]; then
+          $epub_reader "$library/$category/$title" && exit 0
+      else
+          $pdf_reader "$library/$category/$title" && exit 0
+      fi
   fi
 fi
