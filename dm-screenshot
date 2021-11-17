@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 
+SCREENSHOT_TOOL="maim"
+
+if [ -z $(printf "%s " $(whereis $SCREENSHOT_TOOL) | awk '{ print $2 }') ]; then
+    notify-send -u critical "ERROR!" "$SCREENSHOT_TOOL not found"
+    exit 0
+fi
+
 IMG_PATH="$HOME/Pictures/Screenshot/"
 IMG_NAME="maim-$(date "+%d-%m-%Y@%H:%M:%S").png"
 TIME=3000 #Miliseconds notification should remain visible
+
+
+
 FORMAT="png"
 QUALITY="1"
 
@@ -11,9 +21,9 @@ CMD=$(printf '%s\n' "1.quick-fullscreen" "2.delayed-fullscreen" "3.section" "4.v
 cd "$IMG_PATH" || exit
 case ${CMD%% *} in
 
-    1.quick-fullscreen) maim -u -f "$FORMAT" -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Fullscreen Screenshot saved" ;;
-    2.delayed-fullscreen) maim -u -d 4 -f "$FORMAT" -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Fullscreen Screenshot saved" ;;
-    3.section) maim -u -s -f $FORMAT -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Screenshot of section saved" ;;
+    1.quick-fullscreen) $SCREENSHOT_TOOL -u -f "$FORMAT" -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Fullscreen Screenshot saved" ;;
+    2.delayed-fullscreen) $SCREENSHOT_TOOL -u -d 4 -f "$FORMAT" -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Fullscreen Screenshot saved" ;;
+    3.section) $SCREENSHOT_TOOL -u -s -f $FORMAT -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Screenshot of section saved" ;;
     4.view-screenshots) sxiv -t ~/Screenshot ;;
 
     *)  exec "${CMD}"  ;;
