@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-if ! pgrep -x picom ; then
-  notify-send "Launching Picom!.." &
-  picom &
-else
-  notify-send "Killing Picom!..." &
-  pkill picom &
-fi
