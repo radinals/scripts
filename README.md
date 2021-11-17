@@ -1,3 +1,3 @@
-# Dmenu Scripts 
+# Scripts 
 
-    Just basic dmenu scripts
+    Just basic scripts i use
