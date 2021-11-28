@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+OPTIONS=(
+    "1.lockscreen"
+    "2.tty"
+    "3.reboot"
+    "4.poweroff"
+)
+
+CMD=$(printf '%s\n' "${OPTIONS[@]}" | dmenu -i -p 'Options: ')
+case ${CMD%% *} in
+
+	1.lockscreen) /usr/bin/xsecurelock ;;
+	2.tty) pkill -15 Xorg ;;
+	3.reboot) systemctl reboot ;;
+	4.poweroff) systemctl poweroff ;;
+
+    *)
+        exec "'${CMD}'"  ;;
+esac
