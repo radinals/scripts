@@ -9,99 +9,154 @@ try:
     import eyed3
 except ModuleNotFoundError:
     exit(
-        "eyD3 is not found! this script uses eyeD3 to edit the tags, please install it first\n $ pip install eyeD3"
+        "Error!: eyD3 is not found!. This script uses eyeD3 to edit the tags, please install it first.\n$ pip install eyeD3"
     )
+
+# lists all the audio files in a specified directory.
+def list_audio_files(targetDir):
+    # audio formats the program will look for in the directory.
+    audioFormats = [".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".opus"]
+    fileList = []
+
+    # list audio files in the target directory
+    for dirpath, dirnames, files in walk(targetDir):
+        for fileName in files:
+            for i in audioFormats:
+                if fileName.lower().endswith(i):
+                    fileList.append(path.join(dirpath, fileName))
+
+    return fileList
+
+
+# Get the audio filename format
+def get_tag_format(nameFormat):
+    fileFormatTags = ["%a", "%t", "%A", "%aA", "%n"]
+    nameFormat = nameFormat.split(" - ")
+    formatTagDict = {}
+
+    for flag in nameFormat:
+        if flag in fileFormatTags:
+            if flag == "%a":
+                formatTagDict["trackArtist"] = nameFormat.index(flag)
+
+            elif flag == "%t":
+                formatTagDict["trackTitle"] = nameFormat.index(flag)
+
+            elif flag == "%A":
+                formatTagDict["albumName"] = nameFormat.index(flag)
+
+            elif flag == "%b":
+                formatTagDict["albumArtist"] = nameFormat.index(flag)
+
+            elif flag == "%n":
+                formatTagDict["trackNum"] = nameFormat.index(flag)
+        else:
+            exit(f"Erorr!: {flag} is not a recognized tag")
+
+    return formatTagDict
+
+
+# (Re)tags the files.
+def file_tagger(targetDir, nameFormat):
+    formatTagDict = get_tag_format(nameFormat)
+
+    # Iterate through the list of audio files, and write they're tags.
+    for file in list_audio_files(targetDir):
+        fileName = path.basename(file)
+
+        # remove the file extention from the list
+        tagElement = fileName.split(Path(file).suffix)
+
+        # get elements from the lists
+        tagElement = tagElement[-2].split(" - ")
+
+        print(f'Editing "{fileName}".')
+        for formatTag in formatTagDict:
+            # TODO: Make it/ or add an option to not re-tag if the files are already correctly tagged.
+            try:
+                audiofile = eyed3.load(file)
+
+                if formatTag == "albumName":
+                    audiofile.tag.album = tagElement[formatTagDict[formatTag]]
+                    print(" - Edited Album Name Tag.")
+
+                if formatTag == "albumArtist":
+                    audiofile.tag.album_artist = tagElement[formatTagDict[formatTag]]
+                    print(" - Edited Album Artist Tag.")
+
+                if formatTag == "trackArtist":
+                    audiofile.tag.artist = tagElement[formatTagDict[formatTag]]
+                    print(" - Edited Track Artist Tag.")
+
+                if formatTag == "trackTitle":
+                    audiofile.tag.title = tagElement[formatTagDict[formatTag]]
+                    print(" - Edited Track Title tag.")
+
+                if formatTag == "trackNum":
+                    audiofile.tag.track_num = tagElement[formatTagDict[formatTag]]
+                    print(" - Edited Track Number Tag.")
+
+                audiofile.tag.save()
+
+            except IndexError:
+                exit(
+                    f"An Error occured when editing {fileName} tag: The filename is not correctly formated."
+                )
+
+            except AttributeError:
+                exit(
+                    f"An Error occured when editing {fileName} tag: The filename is not correctly formated."
+                )
 
 
 def main():
-    # TODO: add more options?
-    # TODO: Be able to only edit one file's tag.
-    # FEATURE_TO_ADD: be able to change the filename element format.
+    targetDir = None
+    nameFormat = "%a - %A - %t"
 
     try:
-        opts, args = getopt(argv[1:], "t:", ["target=", "help"])
+        opts, args = getopt(argv[1:], "t:f:s:h", ["target=", "format=", "help"])
 
     except:
-        exit(f"unrecognised option, please see --help to see avaliable options..")
+        exit("unrecognised option, please see --help to see avaliable options..")
 
-    target_dir = None
+    if len(opts) > 0:
+        for opt, arg in opts:
+            if opt in ["-h", "--help"]:
+                exit(
+                    """
+                \r auto-tag - (Re)tags audio files in a specified directory.
+                \r usage:    auto-tag [option] [value]    edit tags of the files in the directory
+                \r Options:
+                \r -t, --target {directory}    Specify a target directory.
+                \r -f, -format {format}        Specify how the program looks for the tag by the filename.\n
+                \r                              Available Format Flags:
+                \r                               - %a: Track Artist  - %b: Album Artist
+                \r                               - %t: Track Title   - %A: Album Name
+                \r                               - %y: Track Year
+                \r                               - %n: Track Number
+                \r                              Default Format: "%a - %A - %t"\n
+                \r --help                      Display this help information then exit\n
+                \r report bugs/issues at https://github/radinals/scripts/issues
+                """
+                )
 
-    for opt, arg in opts:
-        if opt in ["-t", "--target"]:
-            target_dir = arg
+            if opt in ["-t", "--target"]:
+                targetDir = arg
 
-        elif opt == "--help":
-            exit(
-                    "(Re)tags audio files in a specified directory\n\nusage:\n    auto-tag [option] [directory]    edit tags of the files in the directory\n\nOptions:\n    -t, --target     specify a target directory\n    --help           display this help information and exit"
-            )
+            if opt in ["-f", "--format"]:
+                nameFormat = arg
 
+    elif len(opts) == 0 and len(argv) == 2:
+        if path.isdir(argv[1]):
+            targetDir = argv[1]
     try:
-        if not None and path.isdir(target_dir):
-            file_tagger(target_dir)
+        if path.isdir(targetDir):
+            file_tagger(targetDir, nameFormat)
 
     except TypeError:
-        if path.isdir(argv[1]):
-            target_dir = argv[1]
-            file_tagger(target_dir)
-
-        else:
-            exit("an error occured, please enter the correct target directory")
-
-    except:
-        exit("an error occured, please enter the correct target directory")
-
-
-def file_tagger(target_dir):
-
-    # list of formats the program will look for in the directory.
-    audio_formats = [".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".opus"]
-
-    audio_file_list = []
-
-    # list audio files in the target directory
-    for dirpath, dirnames, files in walk(target_dir):
-        for file_name in files:
-            for i in audio_formats:
-                if file_name.lower().endswith(i):
-                    audio_file_list.append(path.join(dirpath, file_name))
-
-    count = 0
-
-    # Iterate through the list of audio files, and write they're tags.
-    for file in audio_file_list:
-        file_name = path.basename(file)
-
-        # remove the file extention from the list
-        tag_element = file_name.split(Path(file).suffix)
-
-        # get elements from the lists
-        tag_element = tag_element[-2].split(" - ")
-
-        # shows how many files have been re-tagged.
-        total_file_count = len(audio_file_list)
-        if total_file_count > 1:
-            count+=1
-            progress = f"{total_file_count}/{count} => {round((count * 100) / total_file_count)}%"
-        else:
-            progress = ""
-
-        try:
-            audiofile = eyed3.load(file)
-
-            audiofile.tag.artist = tag_element[0]
-            audiofile.tag.album = tag_element[1]
-            audiofile.tag.title = tag_element[2]
-            audiofile.tag.save()
-
-            print(f"Edited {file_name} tag. {progress}")
-
-        except IndexError:
-            exit(
-                f'An error occured when editing {file_name} tag.\nMake sure the files are named with the correct format.. "Artist - Album - Title"'
-            )
-
-        except:
-            exit(f"An error occured when editing {file_name} tag.")
+        exit(
+            "Error!: make sure you entered the correct flags/values. see --help for more information."
+        )
 
 
 if __name__ == "__main__":
