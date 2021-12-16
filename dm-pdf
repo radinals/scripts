@@ -8,22 +8,27 @@ dm_cmd="dmenu -i -l 15 -p"
 pdf_reader="zathura"
 epub_reader="mupdf"
 
+[ ! -x "$(which "dmenu")" ] && notify-send "dmenu not installed" && exit 0
+[ ! -x "$(which "$pdf_reader")" ] && notify-send "$pdf_reader not installed" && exit 0
+[ ! -x "$(which "$epub_reader")" ] && notify-send "$epub_reader not installed" && exit 0
+
 # List the categories in the library directory.
 # category=$( $dm_cmd "Choose a Category! " <<< "$(ls "$library")" )
 # this might not yet optimized.. maybe, need more research on "GNU find".
-category=$( find "$library" -type d \( ! -iname ".*" \) | awk -F '/' '{print $6}' | awk NF | sort |  $dm_cmd "Choose a Category! " )
+category=$( ls "$library" | sort |  $dm_cmd "Choose a Category! " )
 
 # If a category has been selected then list the related books.
 if [ "$category" ]; then
-  title=$( find "$library/$category" -type f \( ! -iname ".*" \) | awk -F '/' '{print $7}' | awk NF | sort | $dm_cmd "Choose a Book! " )
+  title=$( ls "$library/$category" | sort | $dm_cmd "Choose a Book! " )
   # If A book has been selected then open it.
   if [ "$title" ]; then
-      FILETYPE=$(file -b "$library/$category/$title" | awk -F " " '{print $1'})
-      # Open the book and then exit.
-      if [ $FILETYPE == "EPUB" ]; then
-          $epub_reader "$library/$category/$title" && exit 0
+      filetype="$library/$category/$title"
+      if [ "${filetype##*.}" == "epub" ]; then
+          $epub_reader "$library/$category/$title" || notify-send "An error occured when opening $title" &
+      elif [ "${filetype##*.}" == "pdf" ]; then
+          $pdf_reader "$library/$category/$title" || notify-send "An error occured when opening $title"&
       else
-          $pdf_reader "$library/$category/$title" && exit 0
+	  notify-send "$title is not recognised filetype"
       fi
   fi
 fi

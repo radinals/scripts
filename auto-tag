@@ -30,7 +30,7 @@ def list_audio_files(targetDir):
 
 # Get the audio filename format
 def get_tag_format(nameFormat):
-    fileFormatTags = ["%a", "%t", "%A", "%aA", "%n"]
+    fileFormatTags = ["%a", "%t", "%A", "%b", "%n", "%y"]
     nameFormat = nameFormat.split(" - ")
     formatTagDict = {}
 
@@ -50,6 +50,9 @@ def get_tag_format(nameFormat):
 
             elif flag == "%n":
                 formatTagDict["trackNum"] = nameFormat.index(flag)
+
+            elif flag == "%y":
+                formatTagDict["trackYear"] = nameFormat.index(flag)
         else:
             exit(f"Erorr!: {flag} is not a recognized tag")
 
@@ -96,6 +99,9 @@ def file_tagger(targetDir, nameFormat):
                     audiofile.tag.track_num = tagElement[formatTagDict[formatTag]]
                     print(" - Edited Track Number Tag.")
 
+                if formatTag == "trackYear":
+                    audiofile.tag.original_release_date = tagElement[formatTagDict[formatTag]]
+                    print(" - Edited Track Year Tag.")
                 audiofile.tag.save()
 
             except IndexError:

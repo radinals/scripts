@@ -1,30 +1,23 @@
 #!/usr/bin/env bash
 
-SCREENSHOT_TOOL="maim"
+screenshotTool="maim"
 
-if [ -z $(printf "%s " $(whereis $SCREENSHOT_TOOL) | awk '{ print $2 }') ]; then
-    notify-send -u critical "ERROR!" "$SCREENSHOT_TOOL not found"
-    exit 0
-fi
+[ ! -x "$(which "$screenshotTool")" ] && notify-send "$screenshotTool not installed" && exit 0
 
-IMG_PATH="$HOME/Pictures/Screenshot/"
-IMG_NAME="maim-$(date "+%d-%m-%Y@%H:%M:%S").png"
-TIME=3000 #Miliseconds notification should remain visible
+imgName="screenshot-$(date "+%d-%m-%y@%h:%m:%s").png"
+screenshotDir="$HOME/Pictures/Screenshot"
+notifMsg="Screenshot saved as $imgName"
 
+screenshotCMD="$screenshotTool -u -f png -m 1 $screenshotDir/$imgName"
 
+dmenuCMD=$(printf '%s\n' "1.quick-fullscreen" "2.delayed-fullscreen" "3.section" "4.view-screenshots" | dmenu -p "Select a mode")
 
-FORMAT="png"
-QUALITY="1"
+cd "$screenshotDir" || exit
+case ${dmenuCMD%% *} in
+    1.quick-fullscreen) $screenshotCMD && notify-send "$notifMsg" ;;
+    2.delayed-fullscreen) $screenshotCMD -d 4 && notify-send "$notifMsg" ;;
+    3.section) $screenshotCMD -s && notify-send "$notifMsg"  ;;
+    4.view-screenshots) sxiv $screenshotDir ;;
 
-CMD=$(printf '%s\n' "1.quick-fullscreen" "2.delayed-fullscreen" "3.section" "4.view-screenshots" | dmenu -p "Screenshot Types")
-
-cd "$IMG_PATH" || exit
-case ${CMD%% *} in
-
-    1.quick-fullscreen) $SCREENSHOT_TOOL -u -f "$FORMAT" -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Fullscreen Screenshot saved" ;;
-    2.delayed-fullscreen) $SCREENSHOT_TOOL -u -d 4 -f "$FORMAT" -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Fullscreen Screenshot saved" ;;
-    3.section) $SCREENSHOT_TOOL -u -s -f $FORMAT -m "$QUALITY" "$IMG_PATH$IMG_NAME" && notify-send -u low -t "$TIME" "Maim" "Screenshot of section saved" ;;
-    4.view-screenshots) sxiv -t ~/Screenshot ;;
-
-    *)  exec "${CMD}"  ;;
+    *)  exec "${dmenuCMD}"  ;;
 esac
