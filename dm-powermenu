@@ -7,7 +7,7 @@ OPTIONS=(
     "4.poweroff"
 )
 
-CMD=$(printf '%s\n' "${OPTIONS[@]}" | dmenu -i -p 'Options: ')
+CMD=$(printf '%s\n' "${OPTIONS[@]}" | dmenu -i -m "-1" -p 'Options: ')
 case ${CMD%% *} in
 
 	1.lockscreen) /usr/bin/xsecurelock ;;

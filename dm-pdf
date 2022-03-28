@@ -4,7 +4,7 @@
 library="$HOME/Documents/Books"
 
 # Extra Variables
-dm_cmd="dmenu -i -l 15 -p"
+dm_cmd="dmenu -i -m "-1" -l 15 -p"
 pdf_reader="zathura"
 epub_reader="mupdf"
 

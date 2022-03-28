@@ -10,7 +10,7 @@ notifMsg="Screenshot saved as $imgName"
 
 screenshotCMD="$screenshotTool -u -f png -m 1 $screenshotDir/$imgName"
 
-dmenuCMD=$(printf '%s\n' "1.quick-fullscreen" "2.delayed-fullscreen" "3.section" "4.view-screenshots" | dmenu -p "Select a mode")
+dmenuCMD=$(printf '%s\n' "1.quick-fullscreen" "2.delayed-fullscreen" "3.section" "4.view-screenshots" | dmenu -i -m "-1" -p "Select a mode")
 
 cd "$screenshotDir" || exit
 case ${dmenuCMD%% *} in
