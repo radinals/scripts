@@ -1,0 +1,56 @@
+#! /usr/bin/env python3
+import time
+from os import path, makedirs, listdir
+from pathlib import Path
+from shutil import move
+
+# get a date of when the file was created
+def get_timestamp(format, file):
+    file_seconds = path.getctime(file)
+    file_timestamp = time.ctime(file_seconds)
+    file_timestamp_obj = time.strptime(file_timestamp)
+    file_formated_timestamp = time.strftime(format, file_timestamp_obj)
+
+    return file_formated_timestamp
+
+
+# get the extention from the filename by using "." as a field seperator
+def get_extention(file):
+    if len(file.split(".")) == 1:
+        return "unknown"
+    else:
+        # this will split the filename to a list
+        # take anything after the first period "."
+        # and join it, assuming it is the extention.
+        return ".".join(file.split(".")[1:])
+
+
+def main():
+    download_dir = f"{Path.home()}/Downloads"
+    download_storage = f"{download_dir}/storage"
+
+    if not path.isdir(download_dir):
+        exit("Download directory not found, exiting...")
+
+    # make a list of files in the download directory
+    file_list = listdir(download_dir)
+
+    for file in file_list:
+        org_path = f"{download_dir}/{file}"
+        f_extention = get_extention(org_path)
+        f_cdate = get_timestamp("%d-%m-%Y", org_path)
+        nw_path = f"{download_storage}/{f_cdate}/{f_extention}"
+
+        if path.isfile(org_path):
+
+            # make the directories
+            if not path.isdir(nw_path):
+                makedirs(nw_path)
+
+            # move the files to the directory
+            move(org_path, f"{nw_path}/{file}")
+            print(f"- moved {org_path} to {nw_path}/{file}")
+
+
+if __name__ == "__main__":
+    main()
