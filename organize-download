@@ -5,13 +5,10 @@ from pathlib import Path
 from shutil import move
 
 # get a date of when the file was created
-def get_timestamp(format, file):
-    file_seconds = path.getctime(file)
-    file_timestamp = time.ctime(file_seconds)
-    file_timestamp_obj = time.strptime(file_timestamp)
-    file_formated_timestamp = time.strftime(format, file_timestamp_obj)
+def get_creation_time(format, file):
+    timestamp_obj = time.strptime(time.ctime(path.getctime(file)))
 
-    return file_formated_timestamp
+    return time.strftime(format, timestamp_obj)
 
 
 # get the extention from the filename by using "." as a field seperator
@@ -37,9 +34,9 @@ def main():
 
     for file in file_list:
         org_path = f"{download_dir}/{file}"
-        f_extention = get_extention(org_path)
-        f_cdate = get_timestamp("%d-%m-%Y", org_path)
-        nw_path = f"{download_storage}/{f_cdate}/{f_extention}"
+        extention = get_extention(org_path)
+        creation_date = get_creation_time("%d-%m-%Y", org_path)
+        nw_path = f"{download_storage}/{creation_date}/{extention}"
 
         if path.isfile(org_path):
 
