@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+
 import time
 from os import path, makedirs, listdir
 from pathlib import Path
@@ -7,13 +8,12 @@ from shutil import move
 # get a date of when the file was created
 def get_creation_time(format, file):
     timestamp_obj = time.strptime(time.ctime(path.getctime(file)))
-
     return time.strftime(format, timestamp_obj)
 
 
 # get the extention from the filename by using "." as a field seperator
 def get_extention(file):
-    if len(file.split(".")) == 1:
+    if len(file.split(".")) < 2 or "" in (file.split(".")[1:]):
         return "unknown"
     else:
         # this will split the filename to a list

@@ -1,34 +1,14 @@
 #!/usr/bin/env bash
 
-# Where the books is stored.
-library="$HOME/Documents/Books"
+book_dir="$HOME/Documents/Books"
 
-# Extra Variables
-dm_cmd="dmenu -i -m "-1" -l 15 -p"
-pdf_reader="zathura"
-epub_reader="mupdf"
+prompt="dmenu -i -m $DISPLAY -l 25"
+# prompt="fzf"
 
-[ ! -x "$(which "dmenu")" ] && notify-send "dmenu not installed" && exit 0
-[ ! -x "$(which "$pdf_reader")" ] && notify-send "$pdf_reader not installed" && exit 0
-[ ! -x "$(which "$epub_reader")" ] && notify-send "$epub_reader not installed" && exit 0
+sel_category=$(ls "$book_dir" | $prompt)
 
-# List the categories in the library directory.
-# category=$( $dm_cmd "Choose a Category! " <<< "$(ls "$library")" )
-# this might not yet optimized.. maybe, need more research on "GNU find".
-category=$( ls "$library" | sort |  $dm_cmd "Choose a Category! " )
+[ "$sel_category" ] && \
+    sel_book=$(find "$book_dir/$sel_category" -type f -exec basename {} \; | $prompt) || exit 0
 
-# If a category has been selected then list the related books.
-if [ "$category" ]; then
-  title=$( ls "$library/$category" | sort | $dm_cmd "Choose a Book! " )
-  # If A book has been selected then open it.
-  if [ "$title" ]; then
-      filetype="$library/$category/$title"
-      if [ "${filetype##*.}" == "epub" ]; then
-          $epub_reader "$library/$category/$title" || notify-send "An error occured when opening $title" &
-      elif [ "${filetype##*.}" == "pdf" ]; then
-          $pdf_reader "$library/$category/$title" || notify-send "An error occured when opening $title"&
-      else
-	  notify-send "$title is not recognised filetype"
-      fi
-  fi
-fi
+[ "${sel_book##*.}" == "pdf" ] && zathura "$book_dir/$sel_category/$sel_book" &
+[ "${sel_book##*.}" == "epub" ] && mupdf "$book_dir/$sel_category/$sel_book" &

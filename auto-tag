@@ -81,11 +81,11 @@ def file_tagger(targetDir, nameFormat):
 
                 if formatTag == "albumName":
                     audiofile.tag.album = tagElement[formatTagDict[formatTag]]
-                    print(" - Edited Album Name Tag.")
+                    print(f" - Edited Album Name Tag -> {formatTagDict[formatTag]}")
 
                 if formatTag == "albumArtist":
                     audiofile.tag.album_artist = tagElement[formatTagDict[formatTag]]
-                    print(" - Edited Album Artist Tag.")
+                    print(f" - Edited Album Artist Tag. -> {formatTagDict[formatTag]}")
 
                 if formatTag == "trackArtist":
                     audiofile.tag.artist = tagElement[formatTagDict[formatTag]]
@@ -100,7 +100,9 @@ def file_tagger(targetDir, nameFormat):
                     print(" - Edited Track Number Tag.")
 
                 if formatTag == "trackYear":
-                    audiofile.tag.original_release_date = tagElement[formatTagDict[formatTag]]
+                    audiofile.tag.original_release_date = tagElement[
+                        formatTagDict[formatTag]
+                    ]
                     print(" - Edited Track Year Tag.")
                 audiofile.tag.save()
 
