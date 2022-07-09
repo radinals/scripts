@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+ROM_DIR="$HOME/Emulation/Sony Playstation 2"
+PCSX2_CONF_DIR="$XDG_CONFIG_HOME/PCSX2/inis"
+DMPCSX2_CONFIG="$XDG_CONFIG_HOME/dm-pcsx2/config"
+DMPCSX2_GAMELIST="$XDG_CONFIG_HOME/dm-pcsx2/game_list.csv"
+
+ [ ! -d "$PCSX2_CONF_DIR" ] && printf "Error: No PCSX2 configurations not found" && exit 0
+ [ ! -d "$ROM_DIR" ] && Printf "Error: Roms Are not found" && exit 0
+
+generate_csv()
+{
+	[ ! -d "$XDG_CONFIG_HOME/dm-pcsx2" ] && mkdir -p "$XDG_CONFIG_HOME/dm-pcsx2"
+	[ ! -d "$DMPCSX2_CONFIG" ] && mkdir -p "$DMPCSX2_CONFIG"
+	[ ! -d "$DMPCSX2_CONFIG/games" ] && mkdir -p "$DMPCSX2_CONFIG/games"
+	[ ! -d "$PCSX2_CONF_DIR" ] && cp -rn "$PCSX2_CONF_DIR" "$DMPCSX2_CONFIG/default"
+	[ ! -f "$DMPCSX2_GAMELIST" ] && touch "$DMPCSX2_GAMELIST"
+
+	files=("$ROM_DIR"/*)
+	for file in "${files[@]}"
+	do
+		rom_uuid=$(uuidgen)
+		game_title=$(basename "$file")
+	
+		if  ! grep -q "$file" "$DMPCSX2_GAMELIST" && ! grep -q "$rom_uuid" "$DMPCSX2_GAMELIST"; then
+			printf "$game_title,$file,$rom_uuid\n" >> "$DMPCSX2_GAMELIST"
+			[ ! -d "$DMPCSX2_CONFIG/games/$rom_uuid" ] && \
+				cp -rn "$DMPCSX2_CONFIG/default" "$DMPCSX2_CONFIG/games/$rom_uuid"
+		fi
+	done
+}
+
+launch_pcsx2()
+{
+	[ ! -f "$DMPCSX2_GAMELIST" ] && printf "run dm-pcsx2 generate-csv first!\n" && exit 0
+
+	sel_game=$(awk -F "," '{print $1}' "$DMPCSX2_GAMELIST" | dmenu -i -p "Select a Game:")
+	
+	if [ "$sel_game" ]; then
+		sel_game_uuid=$(grep "$sel_game" "$DMPCSX2_GAMELIST" | awk -F "," '{print $3}')
+		sel_game_dir=$(grep "$sel_game" "$DMPCSX2_GAMELIST" | awk -F "," '{print $2}')
+		pcsx2 "$sel_game_dir" --cfgpath="$DMPCSX2_CONFIG/games/$sel_game_uuid" --fullscreen &
+
+	fi
+}
+
+if [ "$1" == "generate-csv" ]; then
+	generate_csv
+else
+	launch_pcsx2
+fi
