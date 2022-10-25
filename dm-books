@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Books/
+# \---- category/
+#       \---- book.pdf
+
+BOOK_DIR="$HOME/Documents/Books"
+READER="mupdf"
+
+[ ! "$(command -V "$READER")" ] && exit 1
+
+if [ -d "$BOOK_DIR" ]; then
+	sel_category="$(find "$BOOK_DIR" -maxdepth 1 -mindepth 1 \
+        -type d -exec basename {} \; | dmenu -i -l 10 -p "Category: " )"
+    if [ "$sel_category" ]; then
+        sel_book="$(find "$BOOK_DIR/$sel_category" -maxdepth 1 -mindepth 1 \
+            -type f -exec basename {} \; | dmenu -i -l 20 -p "Select Book: ")"
+        if [ "$sel_book" ]; then
+            book="$BOOK_DIR/$sel_category/$sel_book"
+            if [ -f "$book" ]; then
+                "$READER" "$book" &
+            fi
+        fi
+    fi
+fi
+
+exit 1
