@@ -4,7 +4,7 @@ from os import path, walk
 from sys import argv
 from pathlib import Path
 from getopt import getopt
-
+import filetype
 
 def print_help():
     exit(
@@ -31,44 +31,37 @@ def print_help():
 # return a dict of the tag elements of a file
 def get_file_tags(file, seperator, flag_format):
     file_tags = {}
-    # remove the extention
-    fileElements = file.split(Path(file).suffix)
 
+    # remove the extention
     # split them by seperator
-    fileElements = (fileElements[0]).split(seperator)
+    fileElements = ((file.split(Path(file).suffix))[0]).split(seperator)
 
     # check if the number of format flag is more than the file elements
     if len(flag_format) != len(fileElements):
-        exit(f're-check the "format" arguments! Stopped at {file}')
+        print(f're-check the "format" arguments! Stopped at {file}')
+        raise ValueError
 
-    for i in range(len(flag_format)):
-        file_tags[flag_format[i]] = fileElements[i]
+    for i, v in enumerate(flag_format):
+        file_tags[v] = fileElements[i]
 
     return file_tags
 
-
 # list the files in the entered directory
 def list_audio_files(targetDir):
-    # audio formats the program will look for in the directory.
-    audioFormats = [".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg", ".opus"]
-    fileList = []
-
-    # list audio files in the target directory
-    for dirpath, dirnames, files in walk(targetDir):
-        for fileName in files:
-            for i in audioFormats:
-                if fileName.lower().endswith(i):
-                    fileList.append(path.join(dirpath, fileName))
-
-    return fileList
+    return [path.join(f_path, f)
+            for f_path, _, f_list in walk(targetDir) for f in f_list
+            if filetype.is_audio(path.join(f_path, f))]
 
 
-def retag_files(file, tag_format, seperator):
+def retag_files(file, tag_format, seperator, clear_tags=False):
     file_tags = get_file_tags(path.basename(file), seperator, tag_format)
 
     print(f"\nfile = {file}")
     try:
         audiofile = eyed3.load(file)
+        if clear_tags:
+            audiofile.tag.clear()
+
         for k in file_tags.keys():
             if k == "%a":
                 audiofile.tag.artist = file_tags[k]
@@ -110,6 +103,7 @@ def get_arguments():
 
     target_location = None
     seperator = None
+    clear_tags = False
     filename_format = []
 
     if len(opts) > 0:
@@ -131,6 +125,9 @@ def get_arguments():
 
             if opt in ["-s", "--seperator"]:
                 seperator = arg
+            
+            if opt in ["-c", "--clear-tags"]:
+                clear_tags = True
     else:
         print_help()
 
@@ -140,7 +137,10 @@ def get_arguments():
     if seperator == None:
         seperator = " - "
 
-    return {"dir": target_location, "format": filename_format, "seperator": seperator}
+    if len(filename_format) == 0:
+        filename_format = ["%a", "%A", "%t"]
+
+    return {"dir": target_location, "format": filename_format, "seperator": seperator, "clear_tags": clear_tags}
 
 
 def main():
@@ -148,7 +148,7 @@ def main():
     file_list = list_audio_files(arguments["dir"])
 
     for f in file_list:
-        retag_files(f, arguments["format"], arguments["seperator"])
+        retag_files(f, arguments["format"], arguments["seperator"], arguments["clear_tags"])
 
 
 if __name__ == "__main__":
