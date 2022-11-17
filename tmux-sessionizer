@@ -1,10 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 
-PROJECT_DIR=( 
-	"$HOME/Programming/repositories" 
-	"$HOME/.dotfile" 
-	"$HOME/Programming/work_in_progress" 
-)
+PROJECT_DIR="$HOME/Programming/repositories \
+    $HOME/.dotfile \
+    $HOME/Programming/work_in_progress" 
 
 create_windows(){
     session_name="$1"
@@ -27,8 +25,8 @@ case "$1" in
 	-t) selected="$2";;
 	-cd) selected="$(find "$(pwd)" \
 		-mindepth 1 -maxdepth 2 -type d | fzf)";;
-	*) selected="$(find "${PROJECT_DIR[@]}" \
-		-mindepth 1 -maxdepth 1 -type d | fzf)";;
+    *) selected="$(find $PROJECT_DIR \
+        -mindepth 1 -maxdepth 1 -type d | fzf)";;
 esac
 
 [ -z "$selected" ] || [ ! -d "$selected" ] && exit 1
