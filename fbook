@@ -8,23 +8,26 @@ BOOK_DIR="$HOME/Documents/Books"
 [ ! -d "$BOOK_DIR" ] && exit 1
 
 [ -n "$READER" ] && \
-    B_READER="$READER" || B_READER="mupdf"
+    B_READER="$READER" || B_READER="xdg-open"
 [ ! "$(command -V "$B_READER")" ] && exit 1
 
-# PROMPT="fzf"
-PROMPT="dmenu -i -l 50"
-[ "$PROMPT" = "fzf" ] && [ "$TERM" = "linux" ] && exit 1
-
-CATEGORY=""
-BOOK=""
+[ ! "$(command -V "fzf")" ] || \
+    [ ! "$(command -V "dmenu")" ] && exit 1
+[ "$TERM" = "linux" ] && \
+    PROMPT="dmenu -i -l 50" || PROMPT="fzf"
 
 while(true); do
+
+    CATEGORY=""
+    BOOK=""
 
     CATEGORY="$(find "$BOOK_DIR" \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \
         -exec basename {} \; | $PROMPT )"
+
+    [ -z "$CATEGORY" ] && exit 1
 
     if [ -z "$BOOK" ] && [ -n "$CATEGORY" ]; then
 
@@ -33,9 +36,6 @@ while(true); do
             -mindepth 1 \
             -type f \
             -exec basename {} \; | $PROMPT )"
-
-    elif [ -z "$CATEGORY" ]; then
-        exit 1
     fi
 
     [ -f "$BOOK_DIR/$CATEGORY/$BOOK" ] && break
@@ -43,6 +43,8 @@ while(true); do
 done
 
 if [ -n "$BOOK" ] && [ -n "$CATEGORY" ]; then
-    "$B_READER" "$BOOK_DIR/$CATEGORY/$BOOK" &
+    "$B_READER" "$BOOK_DIR/$CATEGORY/$BOOK" 2>/dev/null & 
     exit 0
 fi
+
+exit 1

@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# Videos/
+# \---- category/
+#       \---- video.mp4
+
+VID_DIR="$HOME/Videos"
+[ ! -d "$VID_DIR" ] && exit 1
+
+[ -n "$VIDEO" ] && \
+    V_PLAYER="$VIDEO" || V_PLAYER="xdg-open"
+[ ! "$(command -V "$V_PLAYER")" ] && exit 1
+
+[ ! "$(command -V "fzf")" ] || \
+    [ ! "$(command -V "dmenu")" ] && exit 1
+[ "$TERM" = "linux" ] && \
+    PROMPT="dmenu -i -l 50" || PROMPT="fzf"
+
+while(true); do
+
+    CATEGORY=""
+    VID=""
+
+    CATEGORY="$(find "$VID_DIR" \
+        -maxdepth 1 \
+        -mindepth 1 \
+        -type d \( -not -path '*/\.*' \) \
+        -exec basename {} \; | $PROMPT )"
+    
+    [ -z "$CATEGORY" ] && exit 1
+
+    if [ -z "$VID" ] && [ -n "$CATEGORY" ]; then
+
+        VID="$(find "$VID_DIR/$CATEGORY" \
+            -type f | \
+            awk -F "$VID_DIR/$CATEGORY/" '{print $2}' | $PROMPT )"
+    fi
+
+    [ -f "$VID_DIR/$CATEGORY/$VID" ] && break
+
+done
+
+if [ -n "$VID" ] && [ -n "$CATEGORY" ]; then
+    "$V_PLAYER" "$VID_DIR/$CATEGORY/$VID" &
+    exit 0
+fi
+
+exit 1
