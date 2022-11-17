@@ -6,8 +6,8 @@ PCSX2_CONF_DIR="$XDG_CONFIG_HOME/PCSX2/inis"
 DMPCSX2_CONFIG="$XDG_CONFIG_HOME/dm-pcsx2/config"
 DMPCSX2_GAMELIST="$XDG_CONFIG_HOME/dm-pcsx2/game_list.csv"
 
- [ ! -d "$PCSX2_CONF_DIR" ] && printf "Error: No PCSX2 configurations not found" && exit 0
- [ ! -d "$ROM_DIR" ] && Printf "Error: Roms Are not found" && exit 0
+ [ ! -d "$PCSX2_CONF_DIR" ] && printf "Error: No PCSX2 configurations not found" && exit 1
+ [ ! -d "$ROM_DIR" ] && printf "Error: Roms Are not found" && exit 1
 
 generate_csv()
 {
@@ -33,7 +33,7 @@ generate_csv()
 
 launch_pcsx2()
 {
-	[ ! -f "$DMPCSX2_GAMELIST" ] && printf "run dm-pcsx2 generate-csv first!\n" && exit 0
+	[ ! -f "$DMPCSX2_GAMELIST" ] && printf "run dm-pcsx2 generate-csv first!\n" && exit 1
 
 	sel_game=$(awk -F "," '{print $1}' "$DMPCSX2_GAMELIST" | dmenu -m "-1" -l 10 -i -p "Select a Game:")
 	
