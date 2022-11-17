@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# Books/
+# \---- category/
+#       \---- book.pdf
+
+BOOK_DIR="$HOME/Documents/Books"
+[ ! -d "$BOOK_DIR" ] && exit 1
+
+[ -n "$READER" ] && \
+    B_READER="$READER" || B_READER="mupdf"
+[ ! "$(command -V "$B_READER")" ] && exit 1
+
+# PROMPT="fzf"
+PROMPT="dmenu -i -l 50"
+[ "$PROMPT" = "fzf" ] && [ "$TERM" = "linux" ] && exit 1
+
+CATEGORY=""
+BOOK=""
+
+while(true); do
+
+    CATEGORY="$(find "$BOOK_DIR" \
+        -maxdepth 1 \
+        -mindepth 1 \
+        -type d \
+        -exec basename {} \; | $PROMPT )"
+
+    if [ -z "$BOOK" ] && [ -n "$CATEGORY" ]; then
+
+        BOOK="$(find "$BOOK_DIR/$CATEGORY" \
+            -maxdepth 1 \
+            -mindepth 1 \
+            -type f \
+            -exec basename {} \; | $PROMPT )"
+
+    elif [ -z "$CATEGORY" ]; then
+        exit 1
+    fi
+
+    [ -f "$BOOK_DIR/$CATEGORY/$BOOK" ] && break
+
+done
+
+if [ -n "$BOOK" ] && [ -n "$CATEGORY" ]; then
+    "$B_READER" "$BOOK_DIR/$CATEGORY/$BOOK" &
+    exit 0
+fi
