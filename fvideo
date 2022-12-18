@@ -21,7 +21,7 @@ while(true); do
     CATEGORY=""
     VID=""
 
-    CATEGORY="$(find "$VID_DIR" \
+    CATEGORY="$(find -L "$VID_DIR" \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \( -not -path '*/\.*' \) \
@@ -31,7 +31,7 @@ while(true); do
 
     if [ -z "$VID" ] && [ -n "$CATEGORY" ]; then
 
-        VID="$(find "$VID_DIR/$CATEGORY" \
+        VID="$(find -L "$VID_DIR/$CATEGORY" \
             -type f | \
             awk -F "$VID_DIR/$CATEGORY/" '{print $2}' | $PROMPT )"
     fi
