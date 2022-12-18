@@ -1,0 +1,220 @@
+#!/bin/bash
+
+set -o pipefail
+
+# Directories and File Constants 
+PRG_DIR="$XDG_CONFIG_HOME/ArchiveDownloader"
+ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
+
+DWNLD_DIR="$PRG_DIR/Downloads"
+INCMPLT_DWNLD_DIR="$DWNLD_DIR/.incomplete"
+
+ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
+ARCHV_URL_FILE="$PRG_DIR/archive.urls"
+
+ARCHV_DOT_ORG_PREFIX="https://archive.org/download/"
+DWNLD_DIR_NAME="DWNLD-$(date '+%F@%H:%M:%S')"
+DWNLD_URL_NAME="DWNLD-$(date '+%F@%H:%M:%S').urls"
+
+CUR_DWNLD_DIR="$DWNLD_DIR/$DWNLD_DIR_NAME"
+CUR_DWNLD_URL="$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
+
+# Global Lists
+SEL_ARCHV=()
+SEL_FILES=()
+
+# aria2c settings
+MAX_RETRIES=0
+CONCURRENT_DWNLD=2
+
+# Create the directories if they doesn't exists
+[ ! -d "$PRG_DIR" ] && mkdir -p "$PRG_DIR"
+[ ! -d "$DWNLD_DIR" ] && mkdir -p "$DWNLD_DIR"
+[ ! -d "$ARCHV_CSV_DIR" ] && mkdir -p "$ARCHV_CSV_DIR"
+[ ! -d "$INCMPLT_DWNLD_DIR" ] && mkdir -p "$INCMPLT_DWNLD_DIR"
+
+print_msg(){ printf "%s\n" "$1" 2>/dev/null; }
+print_exit(){ print_msg "$1" && exit "$2"; }
+
+# read from "x.csv" to get the "metadata"
+get_csv_data()
+{
+    arg="$1"
+    csv="$2"
+
+    [ ! -f "$csv" ] && print_exit "file named $csv not found" "1"
+    case ${arg} in
+        name) echo "$( tail -n 1 "$csv" | awk -F "," '{print $1}' )";;
+        url) echo "$( tail -n 1 "$csv" | awk -F "," '{print $2}' )";;
+        date) echo "$( tail -n 1 "$csv" | awk -F "," '{print $3}' )";;
+        *) print_exit "unknown argument $arg" "1"
+    esac
+}
+
+# select archive data to access
+sel_archive()
+{
+    # list of saved archive
+    database=($(find "$ARCHV_CSV_DIR" -name "*.csv" -type f -printf "%p "))
+    opts=()
+
+    for csv in "${database[@]}"; do
+        # check if the csv file has more than 1 lines.
+        if [ "$(wc -l "$csv" | awk '{print $1}')" -gt 1 ]; then
+            
+            # get the archive name either from the csv or the filename
+            name="$(get_csv_data "name" "$csv")"
+            [ -z "$name" ] && name="$(basename "${csv%%.csv}")"
+
+            opts+=("$csv")
+            opts+=("$name")
+            opts+=("OFF")
+        fi
+    done
+
+    [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
+
+	selected="$(dialog --title " Archive Selection Menu " --reorder \
+        --no-tags --separate-output --visit-items --buildlist \
+        --stdout "Choose a Archive" 0 0 0 "${opts[@]}")"
+    stat="$?"
+
+    if [ "$stat" -eq 0 ]; then
+        SEL_ARCHV+=("$selected")
+    else
+        print_exit "cancelled..." "1"
+    fi
+}
+
+# select files to be download from sel_archive
+sel_files()
+{
+    [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..." "1"
+
+    opts=()
+    archv_names=()
+
+    for archv in "${SEL_ARCHV[@]}"; do
+        [ "$(wc -l "$archv" | awk '{print $1}' )" -lt 2 ] && continue
+        archv_names+=(" $(get_csv_data "name" "$archv") ")
+        archv_url="$(get_csv_data "url" "$archv")"
+        while IFS=',' read -r file_link file_name upload_date file_size
+        do
+            opts+=("$archv_url/$file_link") 
+            opts+=("- $file_name [$file_size] [$upload_date]") 
+            opts+=("OFF") 
+        done < <(head -n -1 "$archv")
+    done
+
+    [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
+
+    selected="$( dialog --title "${archv_names[*]}" \
+        --reorder --no-tags --separate-output \
+        --visit-items --extra-button --buildlist \
+        --stdout "Choose Files to Download" 0 0 0 "${opts[@]}")"
+    stat="$?"
+
+    if [ "$stat" -eq 0 ]; then
+        SEL_FILES=("$selected")
+    else
+        print_exit "cancelled..." "1"
+    fi
+}
+
+# Download the files
+download_files()
+{
+    sel_archive
+    sel_files
+
+    [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..." "1"
+
+    # confirm download
+	dialog --title " Continue to Download? " \
+        --yesno "Files to Download: $(printf "%s\n" "${SEL_FILES[@]}" | wc -l)" 0 0
+	answ="$?"
+
+	[ "$answ" -ne 0 ] && print_exit "cancelled..." "1"
+
+    # create the download directory for the files
+	[ ! -d "$CUR_DWNLD_DIR" ] && mkdir -p "$CUR_DWNLD_DIR"
+
+    # Write the selected file's Url to a file
+	printf "%s\n" "${SEL_FILES[@]}" >> "$CUR_DWNLD_URL"
+
+    # begin the download
+	aria2c -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
+        -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
+    dwnld_stat="$?"
+    
+    if [ "$dwnld_stat" -eq 0 ]; then
+        echo "complete"
+    else
+        # if any error occured move the download directory to 
+        # the incomplete downloads directory
+        mv "$CUR_DWNLD_DIR" "$INCMPLT_DWNLD_DIR"
+        print_exit "Moved incomplete downloads to $INCMPLT_DWNLD_DIR" "1"
+    fi
+}
+
+update_list()
+{
+    [ ! -f "$ARCHV_URL_FILE" ] && print_exit "archive.url not found!" "1"
+
+	while IFS=" " read -r url name ; do
+        # Make sure the url is correct/valid
+		[ -z "$url" ] || [ "${#url}" -lt 28 ] \
+            || ! grep -q "$ARCHV_DOT_ORG_PREFIX" <<< "$url" && \
+            print_msg "-> WARNING: $url invalid url, skipping" && continue
+        
+        # If no custom name specified, use the path in the url
+        [ -z "$name" ] && name="$(cut -d "/" -f5 <<< "$url")"
+		csv_name="$name.csv"
+        
+        # get the url html
+		print_msg "#### Fetching data from '$url'..."
+		fetch_list="$(curl --silent --fail "$url")"
+		stat="$?"
+
+		[ "$stat" -gt 0 ] && \
+			print_msg "Error: Failed to get data from $url... skipping" && continue
+
+        # Convert html to csv
+		print_msg "> Generating csv from $url"
+		tr -d '\n' <<< "$fetch_list" | \
+            grep -E -o '<tbody>.*</tbody>' | \
+			sed -r 's/<td><a href=//g' | \
+            sed -r 's/<\/tr>/\n/g; s/  //g' | \
+			sed -r 's/<(\/td|\/a|tr.)>//g; s/\(<a.*\)//g; s/,/_/g' | \
+			sed -r 's/<td>/,/g; s/">/,/g; s/ ,/,/g' | \
+			tr -d '"' | head -n -1 | tail -n +2 > "$ARCHV_CSV_DIR/$csv_name"
+		stat="$?"
+
+		if [ "$stat" -eq 0 ]; then
+            # append to the last line the metadata, name of archive, url, and last modified.
+            echo "$name,$url,$(date +'%d-%b-%Y %H:%M')" >> "$ARCHV_CSV_DIR/$csv_name"
+			print_msg "> Success... Generated $ARCHV_CSV_DIR/$csv_name"
+		else
+			print_msg "> Error: Failed to generate csv from $url"
+		fi
+
+	done <<< "$(cat "$ARCHV_URL_FILE")"
+}
+
+# continue_downloads()
+# {
+#
+# }
+
+main_menu(){
+	opts=( 1 "Download Files" 2 "Update Lists" 3 "Continue Downloads")
+	main_menu="$(dialog --title " Archive.org Downloader " --reorder --no-tags \
+		--menu --stdout "What to do?" 0 0 0 "${opts[@]}")"
+	case ${main_menu} in
+		1) download_files ;;
+		2) update_list ;;
+		3) continue_downloads ;;
+	esac
+}
+
+main_menu
