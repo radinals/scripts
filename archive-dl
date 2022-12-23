@@ -94,7 +94,7 @@ sel_files()
     opts=()
     archv_names=()
 
-    for archv in "${SEL_ARCHV[@]}"; do
+    for archv in ${SEL_ARCHV[@]}; do
         [ "$(wc -l "$archv" | awk '{print $1}' )" -lt 2 ] && continue
         archv_names+=(" $(get_csv_data "name" "$archv") ")
         archv_url="$(get_csv_data "url" "$archv")"
@@ -163,8 +163,8 @@ update_list()
 
 	while IFS=" " read -r url name ; do
         # Make sure the url is correct/valid
-		[ -z "$url" ] || [ "${#url}" -lt 28 ] \
-            || ! grep -q "$ARCHV_DOT_ORG_PREFIX" <<< "$url" && \
+        [ -z "$url" ] && continue
+		[ "${#url}" -lt 28 ] || ! grep -q "$ARCHV_DOT_ORG_PREFIX" <<< "$url" && \
             print_msg "-> WARNING: $url invalid url, skipping" && continue
         
         # If no custom name specified, use the path in the url
