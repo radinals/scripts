@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# TODO: 
+# - be able to use comments in url file
+# - Group Archives
+
+# - remove completed downloads from the url,
+#   helps when restarting downloads.
+
+# - loading stuff to menu is slow, can it be faster
+
+# - Tidy up menu entries
+# - Better way of detecting invalid urls in update_list()
+
+# - option to choose what to do with the archive, either to play (media file) or etc.
+
+# - Help Menu (Very Low Prioraty)
+
+# TODO: add caching layer for every function that has expensive loops
+
+# TODO: Things to be decide
+# - make the script to be able to go into folder in archives
+# - convert to different language
+
 set -o pipefail
 
 # Directories and File Constants 
@@ -12,31 +34,36 @@ INCMPLT_DWNLD_DIR="$DWNLD_DIR/.incomplete"
 ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
 ARCHV_URL_FILE="$PRG_DIR/archive.urls"
 
-ARCHV_DOT_ORG_PREFIX="https://archive.org/download/"
 DWNLD_DIR_NAME="DWNLD-$(date '+%F@%H:%M:%S')"
 DWNLD_URL_NAME="DWNLD-$(date '+%F@%H:%M:%S').urls"
 
 CUR_DWNLD_DIR="$DWNLD_DIR/$DWNLD_DIR_NAME"
 CUR_DWNLD_URL="$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
+GROUP_CACHE="$PRG_DIR/.group_cache"
 
 # Global Lists
 SEL_ARCHV=()
 SEL_FILES=()
+mapfile -d $'\0' DATABASE < \
+    <(find "$ARCHV_CSV_DIR" -name "*.csv" -type f -print0)
 
 # aria2c settings
+DRY_RUN="false"
 MAX_RETRIES=0
-CONCURRENT_DWNLD=2
+CONCURRENT_DWNLD=1
 
 # Create the directories if they doesn't exists
+[ ! -f "$GROUP_CACHE" ] && touch "$GROUP_CACHE"
 [ ! -d "$PRG_DIR" ] && mkdir -p "$PRG_DIR"
 [ ! -d "$DWNLD_DIR" ] && mkdir -p "$DWNLD_DIR"
 [ ! -d "$ARCHV_CSV_DIR" ] && mkdir -p "$ARCHV_CSV_DIR"
 [ ! -d "$INCMPLT_DWNLD_DIR" ] && mkdir -p "$INCMPLT_DWNLD_DIR"
 
+notify_msg(){ notify-send "$1" "$2"; }
 print_msg(){ printf "%s\n" "$1" 2>/dev/null; }
-print_exit(){ print_msg "$1" && exit "$2"; }
+print_exit(){ clear && print_msg "$1" && exit "$2"; }
 
-# read from "x.csv" to get the "metadata"
+# read from an archive ".csv" file, return metadata
 get_csv_data()
 {
     arg="$1"
@@ -44,81 +71,339 @@ get_csv_data()
 
     [ ! -f "$csv" ] && print_exit "file named $csv not found" "1"
     case ${arg} in
-        name) echo "$( tail -n 1 "$csv" | awk -F "," '{print $1}' )";;
-        url) echo "$( tail -n 1 "$csv" | awk -F "," '{print $2}' )";;
-        date) echo "$( tail -n 1 "$csv" | awk -F "," '{print $3}' )";;
+        name) 
+            val="$( tail -n 1 "$csv" | awk -F "," '{print $1}' )"
+            [ -z "$val" ] && val="$(basename "${csv%%.csv}")"
+            ;;
+        url) val="$( tail -n 1 "$csv" | awk -F "," '{print $2}' )";;
+        date) val="$( tail -n 1 "$csv" | awk -F "," '{print $3}' )";;
+        group) val="$( tail -n 1 "$csv" | awk -F "," '{print $4}' )";;
+        group_index) val="$( tail -n 1 "$csv" | awk -F "," '{print $5}' )";;
         *) print_exit "unknown argument $arg" "1"
     esac
+
+    echo "$val"
 }
+
+update_csv_data()
+{
+    tag="$1"
+    val=$2
+    csv="$3"
+
+    [ ! -f "$csv" ] && print_exit "file named $csv not found" "1"
+
+    # get the old data
+    name="$(get_csv_data "name" "$csv")"
+    url="$(get_csv_data "url" "$csv")"
+    date="$(get_csv_data "date" "$csv")"
+    group="$(get_csv_data "group" "$csv")"
+    group_index="$(get_csv_data "group_index" "$csv")"
+
+    # set the new data
+    case ${tag} in
+        name)name=$val;;
+        url)url=$val;;
+        date)date=$val;;
+        group)group=$val;;
+        group_index)group_index=$val;;
+        *) print_exit "unknown target $tag" "1"
+    esac
+
+    file_content="$(cat "$csv")"
+
+    # old data line to be changed
+    old_data="$(tail -n 1 "$csv")"
+
+    # format the new data
+    new_data="$name,$url,$date,$group,$group_index,NULL"
+
+    # overwrite the old file
+    echo "${file_content/$old_data/$new_data}" > "$csv"
+}
+
+inputbox_menu()
+{
+    question="$1"
+    default_val="$2"
+    answ="$(dialog --inputbox --stdout "$question" 0 0 "$default_val")"
+    stat="$?"
+    [ $stat -eq 0 ] && echo "$answ"
+}
+
+edit_archv_name()
+{
+    while (true); do
+        # Files to choose
+        opts=()
+        for csv in "${DATABASE[@]}"; do
+            name="$(get_csv_data "name" "$csv")"
+            opts+=("$csv")
+            opts+=("$name")
+        done
+        
+        # Select a file
+        sel_csv="$(dialog --no-tags --menu --stdout "what to change" 0 0 0 "${opts[@]}")"
+        sel_csv_stat="$?"
+
+        [ "$sel_csv_stat" -gt 0 ] && break
+        [ -z "$sel_csv" ] && continue
+        
+        # get the old name, and get the user input for the new one
+        old_name="$(get_csv_data "name" "$sel_csv" )"
+        new_name="$(inputbox_menu "Rename the Archive" "$old_name")"
+        
+        # in case the user didn't enter anything
+        [ -z "$new_name" ] && new_name="$old_name"
+        
+        # change the name
+        update_csv_data "name" "$new_name" "$sel_csv"
+    done
+}
+
+# TODO: Need to also edit archive.url
+# edit_archv_url()
+# {
+#
+# }
+
+edit_archv_group()
+{
+    sel_archv_opts=()
+
+    while (true); do
+
+        # Files to choose
+        for csv in "${DATABASE[@]}"; do
+            name="$(get_csv_data "name" "$csv")"
+            group="$(get_csv_data "group" "$csv")"
+            group_index="$(get_csv_data "group_index" "$csv")"
+
+            sel_archv_opts+=("$csv")
+            sel_archv_opts+=("[$group: $group_index] $name")
+            sel_archv_opts+=("OFF")
+        done
+
+        # choose the file
+        sel_archv="$(dialog --no-tags --reorder \
+            --buildlist --stdout "Select Archives to be Grouped" 0 0 0 "${sel_archv_opts[@]}")"
+        sel_archv_stat="$?"
+        [ "$sel_archv_stat" -gt 0 ] && break
+        [ -z "$sel_archv" ] && continue
+
+        [ -f "$GROUP_CACHE" ] && rm -f "$GROUP_CACHE"
+        
+        # enter the intended group name
+        group_name="$(inputbox_menu "Name of the Group" "NULL")"
+        group_name_stat="$?"
+        [ "$group_name_stat" -gt 0 ] && break
+        [ -z "$group_name" ] && continue
+       
+        # change the group names in each file
+        count=0
+        for sel_csv in ${sel_archv[@]}; do
+            count="$((count + 1))"
+            update_csv_data "group" "$group_name" "$sel_csv"
+            update_csv_data "group_index" "$count" "$sel_csv"
+        done
+    done
+}
+
+edit_archv_menu()
+{
+    while (true); do
+        opts=(0 "Edit Archives Names" 1 "Edit Url" 2 "Create Archive Groups")
+        menu="$(dialog --no-tags --menu --stdout "what to change" 0 0 0 "${opts[@]}")"
+        stat="$?"
+        [ "$stat" -gt 0 ] && break
+        case ${menu} in
+            0) edit_archv_name;;
+            1) edit_archv_url;;
+            2) edit_archv_group;;
+        esac
+    done
+}
+
 
 # select archive data to access
 sel_archive()
 {
-    # list of saved archive
-    database=($(find "$ARCHV_CSV_DIR" -name "*.csv" -type f -printf "%p "))
     opts=()
+    group_list=()
+    for csv in "${DATABASE[@]}"; do
+        # skip if file has only 1 line
+        [ "$(wc -l "$csv" | awk '{print $1}')" -eq 1 ] && continue
 
-    for csv in "${database[@]}"; do
-        # check if the csv file has more than 1 lines.
-        if [ "$(wc -l "$csv" | awk '{print $1}')" -gt 1 ]; then
-            
-            # get the archive name either from the csv or the filename
-            name="$(get_csv_data "name" "$csv")"
-            [ -z "$name" ] && name="$(basename "${csv%%.csv}")"
+        # get the archive name 
+        name="$(get_csv_data "name" "$csv")"
 
-            opts+=("$csv")
-            opts+=("$name")
-            opts+=("OFF")
+        # Groups
+        group="$(get_csv_data "group" "$csv")"
+        [ -z "$group" ] && group="NULL"
+
+        if [ "$group" != "NULL" ]; then
+
+            # skip groups that has been processed
+            grep -q "$group" <<< "${group_list[*]}" && continue
+
+            name="$group"
+
+            # add to the list of processed groups
+            group_list+=("$group")
+
+            # read cache file if exist 
+            if grep -q "$group" "$GROUP_CACHE"; then
+                csv="$(grep "$group" "$GROUP_CACHE" | cut -d "," -f2)"
+            elif ! grep -q "$group" "$GROUP_CACHE"; then
+                group_csv=()
+                group_csv_files=()
+                count=0
+
+                # look in entire database for archives 
+                # that is in the same group
+                for file in "${DATABASE[@]}"; do
+
+                    [ "$(get_csv_data "group" "$file")" != "$name" ] && continue
+
+                    # To make the csv appear in the correct order
+                    index="$(get_csv_data "group_index" "$file")"
+
+                    # exit if the csv file has no index
+                    [ -z "$index" ] && print_exit "$file, has no group index" "1"
+                    
+                    # store the files by index
+                    declare -A group_csv+=(["$index"]="$file")
+                    
+                    # count the number of archives in the group
+                    count=$((count + 1))
+                done
+                
+                # append the csv file according to it's index
+                for (( i=0; i<=count; i++ )); do
+                    group_csv_files+=("${group_csv[$i]}")
+                done
+
+                csv="${group_csv_files[*]}"
+
+                # write to cache file...
+                echo "$name,$csv" >> "$GROUP_CACHE"
+            fi
+
         fi
-    done
 
+        opts+=("$csv")
+        opts+=("$name")
+        opts+=("OFF")
+    done
+    
     [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
 
-	selected="$(dialog --title " Archive Selection Menu " --reorder \
+	SEL_ARCHV=("$(dialog --title " Archive Selection Menu " --reorder \
         --no-tags --separate-output --visit-items --buildlist \
-        --stdout "Choose a Archive" 0 0 0 "${opts[@]}")"
+        --stdout "Choose a Archive" 0 0 0 "${opts[@]}")")
     stat="$?"
 
-    if [ "$stat" -eq 0 ]; then
-        SEL_ARCHV+=("$selected")
-    else
-        print_exit "cancelled..." "1"
-    fi
+    [ "$stat" -gt 0 ] && print_exit "cancelled..." "1"
 }
 
 # select files to be download from sel_archive
 sel_files()
 {
-    [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..." "1"
+    search_files=false
+    while (true); do
 
-    opts=()
-    archv_names=()
+        [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..." "1"
+        archv_names=()
+        opts=()
 
-    for archv in ${SEL_ARCHV[@]}; do
-        [ "$(wc -l "$archv" | awk '{print $1}' )" -lt 2 ] && continue
-        archv_names+=(" $(get_csv_data "name" "$archv") ")
-        archv_url="$(get_csv_data "url" "$archv")"
-        while IFS=',' read -r file_link file_name upload_date file_size
-        do
-            opts+=("$archv_url/$file_link") 
-            opts+=("- $file_name [$file_size] [$upload_date]") 
-            opts+=("OFF") 
-        done < <(head -n -1 "$archv")
+        # TODO: loading multiple files from multiple archives is slow
+        for archv in ${SEL_ARCHV[@]}; do
+
+            [ "$(wc -l "$archv" | awk '{print $1}' )" -lt 2 ] && continue
+
+            csv_data="$(head -n -1 "$archv")"
+            if $search_files && grep -q "$query" <<< "$csv_data"; then
+                    csv_data="$(grep "$query" <<< "$csv_data")"
+            elif $search_files && ! grep -q "$query" <<< "$csv_data"; then
+                    continue
+            fi
+
+            archv_names+=(" $(get_csv_data "name" "$archv") ")
+            archv_url="$(get_csv_data "url" "$archv")"
+            while IFS=',' read -r file_url file_name upload_date file_size
+            do
+                opts+=("$archv_url/$file_url") 
+                opts+=("- $file_name [$file_size] [$upload_date]") 
+                opts+=("OFF") 
+            done <<< "$csv_data"
+        done
+
+        # if nothing is found in the search
+        if [ -z "${opts[*]}" ] && [ "$search_files" ]; then
+            search_files=false
+            dialog --title " Nothing Found! " \
+                --msgbox "Nothing related to '$query' Found!" 0 0
+            continue
+        fi
+
+        # reset to false
+        [ $search_files ] && search_files=false
+
+        [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
+
+        SEL_FILES=("$(dialog --title "${archv_names[*]}" --reorder --no-tags \
+            --separate-output --extra-button --extra-label "Search" --visit-items \
+            --buildlist --stdout "Choose Files to Download" 0 0 0 "${opts[@]}")")
+        stat="$?"
+        
+        if [ "$stat" -eq 0 ]; then
+
+            # exit if nothing if nothing is selected
+            [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..." "1"
+
+            # otherwise, break out of the loop
+            break
+
+        # if "search" button is pressed
+        elif [ "$stat" -eq 3 ]; then
+            # ask the user for the search query
+            query="$(inputbox_menu "Look for what?" "NULL")"
+
+            # if nothing is entered re-run the loop
+            [ -z "$query" ] && continue
+            
+            # begin search
+            search_files=true
+        else
+            print_exit "cancelled..." "1"
+        fi
     done
+}
 
-    [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
+# set aria2c settings
+download_settings_menu()
+{
+    while (true)
+    do
+        opts=(\
+            0 "Max Retries ($MAX_RETRIES)" \
+            1 "Concurrent Downloads ($CONCURRENT_DWNLD)" \
+            2 "Dry Run ($DRY_RUN)"\
+        )
 
-    selected="$( dialog --title "${archv_names[*]}" \
-        --reorder --no-tags --separate-output \
-        --visit-items --extra-button --buildlist \
-        --stdout "Choose Files to Download" 0 0 0 "${opts[@]}")"
-    stat="$?"
+        menu="$(dialog --title " aria2c settings " --cancel-label "Done" \
+            --reorder --no-tags --menu --stdout "Set an option?" 0 0 0 "${opts[@]}")"
+        stat="$?"
 
-    if [ "$stat" -eq 0 ]; then
-        SEL_FILES=("$selected")
-    else
-        print_exit "cancelled..." "1"
-    fi
+        # If "Done" Is Pressed
+        [ "$stat" -gt 0 ] && break
+
+	    case ${menu} in
+            0) MAX_RETRIES="$(dialog --rangebox --stdout "Maximum Retries" 0 0 0 100 "$MAX_RETRIES")";;
+            1) CONCURRENT_DWNLD="$(dialog --rangebox --stdout "Number of Files Downloaded at a time" 0 0 1 100 "$CONCURRENT_DWNLD")";;
+            2) dialog --yesno "Dry Run? ($DRY_RUN)" 0 0 && DRY_RUN="true"
+        esac
+    done
 }
 
 # Download the files
@@ -136,48 +421,72 @@ download_files()
 
 	[ "$answ" -ne 0 ] && print_exit "cancelled..." "1"
 
+    download_settings_menu
+
     # create the download directory for the files
-	[ ! -d "$CUR_DWNLD_DIR" ] && mkdir -p "$CUR_DWNLD_DIR"
+    [ ! -d "$CUR_DWNLD_DIR" ] && mkdir -p "$CUR_DWNLD_DIR"
 
     # Write the selected file's Url to a file
-	printf "%s\n" "${SEL_FILES[@]}" >> "$CUR_DWNLD_URL"
+    printf "%s\n" "${SEL_FILES[@]}" >> "$CUR_DWNLD_URL"
 
     # begin the download
-	aria2c -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
+    clear
+	aria2c --dry-run "$DRY_RUN" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
         -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
     dwnld_stat="$?"
     
-    if [ "$dwnld_stat" -eq 0 ]; then
-        echo "complete"
+    if [ "$DRY_RUN" == "false" ]; then
+        if [ "$dwnld_stat" -gt 0 ]; then
+            # if any error occured move the download directory to 
+            # the incomplete downloads directory
+            mv "$CUR_DWNLD_DIR" "$INCMPLT_DWNLD_DIR"
+            print_exit "Moved incomplete downloads to $INCMPLT_DWNLD_DIR" "1"
+        fi
     else
-        # if any error occured move the download directory to 
-        # the incomplete downloads directory
-        mv "$CUR_DWNLD_DIR" "$INCMPLT_DWNLD_DIR"
-        print_exit "Moved incomplete downloads to $INCMPLT_DWNLD_DIR" "1"
+        # Delete auto-generated files if dry run is selected
+        rm -rf "$CUR_DWNLD_DIR"
     fi
 }
 
 update_list()
 {
-    [ ! -f "$ARCHV_URL_FILE" ] && print_exit "archive.url not found!" "1"
+    clear
 
+    [ ! -f "$ARCHV_URL_FILE" ] && print_exit "Error: archive.url not found!" "1"
+
+	dialog --yesno "Update Existing Files?" 0 0
+	answ="$?"
+
+    print_msg "Updating Database..."
+
+    a_count=0
+    f_count=0
 	while IFS=" " read -r url name ; do
-        # Make sure the url is correct/valid
+
+        ! grep -q "https://archive.org/download/" <<< "$url" && continue
+
+		csv_name="$(cut -d "/" -f5 <<< "$url").csv"
+
+        if [ "$answ" -ne 0 ]; then
+            # don't update if the csv already existed
+            [ -f "$ARCHV_CSV_DIR/$csv_name" ] && continue
+        fi
+
+        # skip empty lines
         [ -z "$url" ] && continue
-		[ "${#url}" -lt 28 ] || ! grep -q "$ARCHV_DOT_ORG_PREFIX" <<< "$url" && \
-            print_msg "-> WARNING: $url invalid url, skipping" && continue
-        
-        # If no custom name specified, use the path in the url
-        [ -z "$name" ] && name="$(cut -d "/" -f5 <<< "$url")"
-		csv_name="$name.csv"
-        
+
+        a_count=$((a_count + 1))
+
         # get the url html
-		print_msg "#### Fetching data from '$url'..."
+		print_msg "#### Fetching data from '$url'..." 
 		fetch_list="$(curl --silent --fail "$url")"
 		stat="$?"
 
-		[ "$stat" -gt 0 ] && \
-			print_msg "Error: Failed to get data from $url... skipping" && continue
+		if [ "$stat" -gt 0 ]; then
+			print_msg "WARNING: An error occured when downloading $url, exited with error code $stat"
+            f_count=$((f_count + 1))
+            continue
+        fi
 
         # Convert html to csv
 		print_msg "> Generating csv from $url"
@@ -192,28 +501,79 @@ update_list()
 
 		if [ "$stat" -eq 0 ]; then
             # append to the last line the metadata, name of archive, url, and last modified.
-            echo "$name,$url,$(date +'%d-%b-%Y %H:%M')" >> "$ARCHV_CSV_DIR/$csv_name"
+            echo "$name,$url,$(date +'%d-%b-%Y %H:%M'),NULL,NULL,NULL," >> "$ARCHV_CSV_DIR/$csv_name"
 			print_msg "> Success... Generated $ARCHV_CSV_DIR/$csv_name"
 		else
 			print_msg "> Error: Failed to generate csv from $url"
+            f_count=$((f_count + 1))
 		fi
 
 	done <<< "$(cat "$ARCHV_URL_FILE")"
+
+    print_msg "Process completed, $f_count Failed, out of $a_count"
 }
 
-# continue_downloads()
-# {
-#
-# }
+
+continue_downloads()
+{
+    # TODO:
+    # PRE-DOWNLOAD
+    # - Check for incomplete downloads
+    # - Ask user which to download
+    # BEGIN DOWNLOAD
+    # - If completed, move to download dir
+    # - If failed, prompt user of failure, exit
+
+    mapfile -d $'\0' dwnld_dir < <(find "$INCMPLT_DWNLD_DIR" -name "DWNLD-.*" -type d -print0)
+
+    [ -z "${dwnld_dir[*]}" ] && print_exit "Nothing to Download" "1"
+
+    incmplt_dwnld_menu_opts=()
+
+    for dir in "${dwnld_dir[@]}"; do
+        ! ls "$dir" | grep -Eq ".*.urls" && continue
+        
+        url_file="$(find "$dir" -maxdepth 1 -name "*.urls" -type f | head -n 1)"
+
+        incmplt_dwnld_menu_opts+=("$dir/$url_file $dir")
+        incmplt_dwnld_menu_opts+=("$(basename $dir)")
+    done
+    
+    while (true); do
+        incmplt_dwnld_menu="$(dialog --no-tags -menu \
+            --stdout "Select an Incomplete Download" 0 0 0 "${incmplt_dwnld_menu_opts[@]}")"
+        incmplt_dwnld_menu_stat="$?"
+
+        [ "$incmplt_dwnld_menu_stat" -gt 0 ] & exit 1
+
+        aria2c -C --dry-run "$DRY_RUN" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
+            -d "$(cut -d " " -f2- <<< $incmplt_dwnld_menu)" -i "$(cut -d " " -f1- <<< $incmplt_dwnld_menu)"
+        dwnld_stat="$?"
+
+        # TODO: copy_paste!
+        # if [ "$DRY_RUN" == "false" ]; then
+        #     if [ "$dwnld_stat" -eq 0 ]; then
+        #         # TODO: What to do in case a download succeed
+        #     else
+        #         # TODO: What to do in case a download fails and etc
+        #     fi
+        # fi
+    done
+
+    # check if there is any incomplete downloads
+    # show a menu of every incomplete download
+    #   if user select any, start the download
+}
 
 main_menu(){
-	opts=( 1 "Download Files" 2 "Update Lists" 3 "Continue Downloads")
+	opts=( 1 "Download Files" 2 "Update Lists" 3 "Continue Downloads" 4 "Edit Archives")
 	main_menu="$(dialog --title " Archive.org Downloader " --reorder --no-tags \
 		--menu --stdout "What to do?" 0 0 0 "${opts[@]}")"
 	case ${main_menu} in
 		1) download_files ;;
-		2) update_list ;;
+		2) update_list;;
 		3) continue_downloads ;;
+        4) edit_archv_menu;;
 	esac
 }
 
