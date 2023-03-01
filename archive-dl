@@ -475,6 +475,7 @@ download_settings_menu()
             0 "Max Retries ($MAX_RETRIES)" \
             1 "Concurrent Downloads ($CONCURRENT_DWNLD)" \
             2 "Dry Run ($DRY_RUN)"\
+            3 "Change Download Directory"\
         )
 
         menu="$(dialog --title " Download Settings " \
@@ -486,19 +487,23 @@ download_settings_menu()
         [ "$stat" -gt 0 ] && break
 
 	    case ${menu} in
-            0) 
-                MAX_RETRIES="$(dialog --title " Maximum Retries Allowed " --ok-label "Done" \
+            0)  MAX_RETRIES="$(dialog --title " Maximum Retries Allowed " --ok-label "Done" \
                     --rangebox --stdout "Notice: 0 Means Unlimited" 0 0 0 100 "$MAX_RETRIES")"
             ;;
-            1) 
-                CONCURRENT_DWNLD="$(dialog --title " Number of Concurrent Downloads " --ok-label "Done" \
+            1)  CONCURRENT_DWNLD="$(dialog --title " Number of Concurrent Downloads " --ok-label "Done" \
                     --rangebox --stdout "Number of Files Downloaded at a Time" 0 0 1 100 "$CONCURRENT_DWNLD")"
             ;;
-            2) 
-                dialog --title " Dry Run: ($DRY_RUN) " \
+            2)  dialog --title " Dry Run: ($DRY_RUN) " \
                     --yesno "Don't Download Anything, Just Check if the File Exists [Y/n]" 0 0 
                 answ="$?"
                 [ "$answ" -eq 0 ] && DRY_RUN="true" || DRY_RUN="false"
+            ;;
+            3)  while(true); do
+                    user_dwnld_dir="$(inputbox_menu "Enter the Download Path: " "$CUR_DWNLD_DIR")"
+                    user_dwnld_dir_stat="$?"
+                    [ "$user_dwnld_dir_stat" -gt 0 ] && break
+                    CUR_DWNLD_DIR="$user_dwnld_dir" && break
+                done
             ;;
         esac
     done
@@ -525,14 +530,14 @@ download_files()
     [ ! -d "$CUR_DWNLD_DIR" ] && mkdir -p "$CUR_DWNLD_DIR"
 
     # Write the selected file's Url to a file
-    printf "%s\n" "${SEL_FILES[@]}" >> "$CUR_DWNLD_URL"
+    printf "%s\n" "${SEL_FILES[@]}" >> "$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
 
     # begin the download
     clear
 
     if [ "$DRY_RUN" == "true" ]; then
         aria2c --dry-run "true" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
-            -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
+            -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
         dwnld_stat="$?"
 
         # Delete auto-generated files if dry run is selected
