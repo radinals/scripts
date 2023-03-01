@@ -332,8 +332,7 @@ search_archv()
             [ -z "$grep_result" ] && break 
 
             archv_url="$(get_csv_data "url" "$archv")"
-            while IFS=',' read -r file_url file_name upload_date file_size
-            do
+            while IFS=',' read -r file_url file_name upload_date file_size; do
                 opt_stat="OFF"
 
                 if [ -n "${SEL_FILES[*]}" ]; then
@@ -402,8 +401,7 @@ sel_files()
             archv_url="$(get_csv_data "url" "$archv")"
 
             # get data from each line in the csv file
-            while IFS=',' read -r file_url file_name upload_date file_size
-            do
+            while IFS=',' read -r file_url file_name upload_date file_size; do
                 # generate options for the dialog menu
                 
                 # default state
@@ -472,8 +470,7 @@ sel_files()
 # set aria2c settings
 download_settings_menu()
 {
-    while (true)
-    do
+    while (true); do
         opts=(\
             0 "Max Retries ($MAX_RETRIES)" \
             1 "Concurrent Downloads ($CONCURRENT_DWNLD)" \
