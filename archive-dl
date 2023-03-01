@@ -480,24 +480,28 @@ download_settings_menu()
             2 "Dry Run ($DRY_RUN)"\
         )
 
-        menu="$(dialog --title " aria2c settings " --cancel-label "Done" \
-            --reorder --no-tags --menu --stdout "Set an option?" 0 0 0 "${opts[@]}")"
+        menu="$(dialog --title " Download Settings " \
+            --extra-button --extra-label "Done" --ok-label "Edit" --reorder --no-tags \
+            --menu --stdout "Select a Setting to Change" 0 0 0 "${opts[@]}")"
         stat="$?"
 
-        # If "Done" Is Pressed
+        [ "$stat" -eq 1 ] && print_exit "Canceled..." "1"
         [ "$stat" -gt 0 ] && break
 
 	    case ${menu} in
-            0) MAX_RETRIES="$(dialog --rangebox --stdout "Maximum Retries" 0 0 0 100 "$MAX_RETRIES")";;
-            1) CONCURRENT_DWNLD="$(dialog --rangebox --stdout "Number of Files Downloaded at a time" 0 0 1 100 "$CONCURRENT_DWNLD")";;
+            0) 
+                MAX_RETRIES="$(dialog --title " Maximum Retries Allowed " \
+                    --rangebox --stdout "Notice: 0 Means Unlimited" 0 0 0 100 "$MAX_RETRIES")"
+            ;;
+            1) 
+                CONCURRENT_DWNLD="$(dialog --title " Number of Concurrent Downloads " \
+                    --rangebox --stdout "Number of Files Downloaded at a Time" 0 0 1 100 "$CONCURRENT_DWNLD")"
+            ;;
             2) 
-                dialog --yesno "Dry Run? ($DRY_RUN)" 0 0 
+                dialog --title " Dry Run: ($DRY_RUN) " \
+                    --yesno "Don't Download Anything, Just Check if the File Exists [Y/n]" 0 0 
                 answ="$?"
-                if [ "$answ" -ne 0 ]; then
-                    DRY_RUN="false" 
-                else
-                    DRY_RUN="true"
-                fi
+                [ "$answ" -eq 0 ] && DRY_RUN="true" || DRY_RUN="false"
             ;;
         esac
     done
