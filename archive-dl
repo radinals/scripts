@@ -2,7 +2,6 @@
 
 # TODO: 
 # - be able to use comments in url file
-# - Group Archives
 
 # - remove completed downloads from the url,
 #   helps when restarting downloads.
@@ -38,7 +37,6 @@ DWNLD_DIR_NAME="DWNLD-$(date '+%F@%H:%M:%S')"
 DWNLD_URL_NAME="DWNLD-$(date '+%F@%H:%M:%S').urls"
 
 CUR_DWNLD_DIR="$DWNLD_DIR/$DWNLD_DIR_NAME"
-CUR_DWNLD_URL="$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
 GROUP_CACHE="$PRG_DIR/.group_cache"
 
 # Global Lists
@@ -169,32 +167,37 @@ edit_archv_name()
 
 edit_archv_group()
 {
-    sel_archv_opts=()
+    opts=()
 
     while (true); do
 
-        # Files to choose
+        # Generate Options
         for csv in "${DATABASE[@]}"; do
             name="$(get_csv_data "name" "$csv")"
             group="$(get_csv_data "group" "$csv")"
-            group_index="$(get_csv_data "group_index" "$csv")"
+            index="$(get_csv_data "group_index" "$csv")"
 
-            sel_archv_opts+=("$csv")
-            sel_archv_opts+=("[$group: $group_index] $name")
-            sel_archv_opts+=("OFF")
+            [ -z "$group" ] && update_csv_data "group" "NULL" "$csv"
+            [ -z "$index" ] && update_csv_data "group_index" "1" "$csv"
+
+            opts+=("$csv")
+            opts+=("[$group: $group_index] $name")
+            opts+=("OFF")
         done
 
+        [ -z "${opts[*]}" ] && continue
+
         # choose the file
-        sel_archv=("$(dialog --no-tags --reorder \
-            --buildlist --stdout "Select Archives to be Grouped" 0 0 0 "${sel_archv_opts[@]}")")
+        sel_archv=("$(dialog --title " Select Archives to be Grouped " --no-tags --reorder \
+            --buildlist --stdout "Notice: Order of Selection Matters!" 0 0 0 "${opts[@]}")")
         sel_archv_stat="$?"
         [ "$sel_archv_stat" -gt 0 ] && break
         [ -z "${sel_archv[*]}" ] && continue
 
         [ -f "$GROUP_CACHE" ] && rm -f "$GROUP_CACHE"
         
-        # enter the intended group name
-        group_name="$(inputbox_menu "Name of the Group" "NULL")"
+        # enter the group name
+        group_name="$(inputbox_menu "Name of the Group" "")"
         group_name_stat="$?"
         [ "$group_name_stat" -gt 0 ] && break
         [ -z "$group_name" ] && continue
@@ -213,7 +216,8 @@ edit_archv_menu()
 {
     while (true); do
         opts=(0 "Edit Archives Names" 1 "Edit Url" 2 "Create Archive Groups")
-        menu="$(dialog --no-tags --menu --stdout "what to change" 0 0 0 "${opts[@]}")"
+        menu="$(dialog --title " Archive Editing Menu " --no-tags \
+            --menu --stdout "Select an Option" 0 0 0 "${opts[@]}")"
         stat="$?"
         [ "$stat" -gt 0 ] && break
         case ${menu} in
@@ -337,17 +341,13 @@ search_archv()
 
                 if [ -n "${SEL_FILES[*]}" ]; then
                     for sel_file in ${SEL_FILES[@]}; do
-                        if [ "$sel_file" == "$archv_url/$file_url" ]; then
-                            opt_stat="ON"
-                        fi
+                        [ "$sel_file" == "$archv_url/$file_url" ] && opt_stat="ON"
                     done
                 fi
 
                 if [ -n "${QUERY_RESULT[*]}" ]; then
                     for search_result in ${QUERY_RESULT[@]}; do
-                        if [ "$search_result" == "$archv_url/$file_url" ]; then
-                            opt_stat="ON"
-                        fi
+                        [ "$search_result" == "$archv_url/$file_url" ] && opt_stat="ON"
                     done
                 fi
 
@@ -364,10 +364,10 @@ search_archv()
                 --stdout "Select Files to Download" 0 0 0 "${opts[@]}")"
             stat="$?"
 
-            if [ "$stat" -eq 0 ] && [ -n "$search_result" ]; then
+            if [ "$stat" -gt 0 ] || [ -z "$search_result" ]; then
                 QUERY_RESULT+=("$search_result")
             else
-                dialog --title " Canceled " --msgbox "Canceling Search" 0 0
+                dialog --title " Canceled " --msgbox "Canceling Search..." 0 0
             fi
         else
             dialog --title " Nothing Found! " \
@@ -401,27 +401,22 @@ sel_files()
             archv_url="$(get_csv_data "url" "$archv")"
 
             # get data from each line in the csv file
+            # generate options for the dialog menu
             while IFS=',' read -r file_url file_name upload_date file_size; do
-                # generate options for the dialog menu
-                
                 # default state
                 opt_stat="OFF"
                 
                 # re-select selected files after searches
                 if [ -n "${SEL_FILES[*]}" ]; then
                     for sel_file in ${SEL_FILES[@]}; do
-                        if [ "$sel_file" == "$archv_url/$file_url" ]; then
-                            opt_stat="ON"
-                        fi
+                        [ "$sel_file" == "$archv_url/$file_url" ] && opt_stat="ON"
                     done
                 fi
 
                 # Process search result
                 if [ -n "${QUERY_RESULT[*]}" ]; then
                     for search_result in ${QUERY_RESULT[@]}; do
-                        if [ "$search_result" == "$archv_url/$file_url" ]; then
-                            opt_stat="ON"
-                        fi
+                        [ "$search_result" == "$archv_url/$file_url" ] && opt_stat="ON"
                     done
                 fi
 
