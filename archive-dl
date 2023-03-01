@@ -382,8 +382,6 @@ search_archv()
 
 sel_files()
 {
-    # TODO: Different Dialog Menu for Searches "Checklist" maybe? [x]
-    # TODO: after searches, set selected to be "ON" in file selection dialog [] (TESTING)
     search_files=0
 
     while (true); do
@@ -393,7 +391,6 @@ sel_files()
         opts=()
         csv_data=""
 
-        # TODO: loading multiple files from multiple archives is slow
         for archv in ${SEL_ARCHV[@]}; do
 
             [ "$(wc -l "$archv" | awk '{print $1}' )" -lt 2 ] && continue
@@ -531,6 +528,7 @@ download_files()
 
     # begin the download
     clear
+
     if [ "$DRY_RUN" == "true" ]; then
         aria2c --dry-run "true" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
             -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
@@ -565,6 +563,7 @@ update_list()
 
     a_count=0
     f_count=0
+
 	while IFS=" " read -r url name ; do
 
         ! grep -q "https://archive.org/download/" <<< "$url" && continue
