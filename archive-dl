@@ -44,13 +44,14 @@ GROUP_CACHE="$PRG_DIR/.group_cache"
 # Global Lists
 SEL_ARCHV=()
 SEL_FILES=()
+QUERY_RESULT=()
 mapfile -d $'\0' DATABASE < \
     <(find "$ARCHV_CSV_DIR" -name "*.csv" -type f -print0)
 
 # aria2c settings
 DRY_RUN="false"
-MAX_RETRIES=0
-CONCURRENT_DWNLD=1
+MAX_RETRIES="0"
+CONCURRENT_DWNLD="1"
 
 # Create the directories if they doesn't exists
 [ ! -f "$GROUP_CACHE" ] && touch "$GROUP_CACHE"
@@ -306,15 +307,93 @@ sel_archive()
     [ "$stat" -gt 0 ] && print_exit "cancelled..." "1"
 }
 
-# select files to be download from sel_archive
+search_archv()
+{
+    in_search=1
+    opts=()
+    grep_result=""
+
+    query="$(inputbox_menu "Look for what?" "")"
+
+    [ -z "$query" ] && in_search=0
+
+    if [ $in_search -eq 1 ]; then 
+
+        for archv in ${SEL_ARCHV[@]}; do
+            csv_data="$(head -n -1 "$archv")"
+            
+            if [ $in_search -eq 1 ] && grep -q "$query" <<< "$csv_data"; then
+                    # re-set csv_data to be query result
+                    grep_result="$(grep "$query" <<< "$csv_data")"
+
+            # if grep returns nothing 
+            elif [ $in_search -eq 1 ] && ! grep -q "$query" <<< "$csv_data"; then
+                    continue
+            fi
+
+            [ -z "$grep_result" ] && break 
+
+            archv_url="$(get_csv_data "url" "$archv")"
+            while IFS=',' read -r file_url file_name upload_date file_size
+            do
+                opt_stat="OFF"
+
+                if [ -n "${SEL_FILES[*]}" ]; then
+                    for sel_file in ${SEL_FILES[@]}; do
+                        if [ "$sel_file" == "$archv_url/$file_url" ]; then
+                            opt_stat="ON"
+                        fi
+                    done
+                fi
+
+                if [ -n "${QUERY_RESULT[*]}" ]; then
+                    for search_result in ${QUERY_RESULT[@]}; do
+                        if [ "$search_result" == "$archv_url/$file_url" ]; then
+                            opt_stat="ON"
+                        fi
+                    done
+                fi
+
+                opts+=("$archv_url/$file_url")
+                opts+=("- $file_name [$file_size] [$upload_date]") 
+                opts+=("$opt_stat")
+            done <<< "$grep_result"
+        done
+
+        if [ -n "${opts[*]}" ]; then
+
+            search_result="$(dialog --title "Search Results" \
+                --reorder --no-tags --separate-output --checklist \
+                --stdout "Select Files to Download" 0 0 0 "${opts[@]}")"
+            stat="$?"
+
+            if [ "$stat" -eq 0 ] && [ -n "$search_result" ]; then
+                QUERY_RESULT+=("$search_result")
+            else
+                dialog --title " Canceled " --msgbox "Canceling Search" 0 0
+            fi
+        else
+            dialog --title " Nothing Found! " \
+                --msgbox "Nothing related to '$query' Found!" 0 0
+        fi
+
+    fi
+
+    in_search=0
+}
+
 sel_files()
 {
-    search_files=false
+    # TODO: Different Dialog Menu for Searches "Checklist" maybe? [x]
+    # TODO: after searches, set selected to be "ON" in file selection dialog [] (TESTING)
+    search_files=0
+
     while (true); do
 
         [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..." "1"
         archv_names=()
         opts=()
+        csv_data=""
 
         # TODO: loading multiple files from multiple archives is slow
         for archv in ${SEL_ARCHV[@]}; do
@@ -322,32 +401,47 @@ sel_files()
             [ "$(wc -l "$archv" | awk '{print $1}' )" -lt 2 ] && continue
 
             csv_data="$(head -n -1 "$archv")"
-            if $search_files && grep -q "$query" <<< "$csv_data"; then
-                    csv_data="$(grep "$query" <<< "$csv_data")"
-            elif $search_files && ! grep -q "$query" <<< "$csv_data"; then
-                    continue
-            fi
 
+            # get the archive name and url
             archv_names+=(" $(get_csv_data "name" "$archv") ")
             archv_url="$(get_csv_data "url" "$archv")"
+
+            # get data from each line in the csv file
             while IFS=',' read -r file_url file_name upload_date file_size
             do
-                opts+=("$archv_url/$file_url") 
+                # generate options for the dialog menu
+                
+                # default state
+                opt_stat="OFF"
+                
+                # re-select selected files after searches
+                if [ -n "${SEL_FILES[*]}" ]; then
+                    for sel_file in ${SEL_FILES[@]}; do
+                        if [ "$sel_file" == "$archv_url/$file_url" ]; then
+                            opt_stat="ON"
+                        fi
+                    done
+                fi
+
+                # Process search result
+                if [ -n "${QUERY_RESULT[*]}" ]; then
+                    for search_result in ${QUERY_RESULT[@]}; do
+                        if [ "$search_result" == "$archv_url/$file_url" ]; then
+                            opt_stat="ON"
+                        fi
+                    done
+                fi
+
+                # add them to the argument array
+                opts+=("$archv_url/$file_url")
                 opts+=("- $file_name [$file_size] [$upload_date]") 
-                opts+=("OFF") 
+                opts+=("$opt_stat")
+
             done <<< "$csv_data"
         done
 
-        # if nothing is found in the search
-        if [ -z "${opts[*]}" ] && [ "$search_files" ]; then
-            search_files=false
-            dialog --title " Nothing Found! " \
-                --msgbox "Nothing related to '$query' Found!" 0 0
-            continue
-        fi
-
         # reset to false
-        [ $search_files ] && search_files=false
+        [ $search_files ] && search_files=0
 
         [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
 
@@ -366,14 +460,14 @@ sel_files()
 
         # if "search" button is pressed
         elif [ "$stat" -eq 3 ]; then
-            # ask the user for the search query
-            query="$(inputbox_menu "Look for what?" "NULL")"
+            # begin search
+            search_archv
 
             # if nothing is entered re-run the loop
-            [ -z "$query" ] && continue
+            [ -z "$QUERY_RESULT" ] && continue
             
             # begin search
-            search_files=true
+            search_files=1
         else
             print_exit "cancelled..." "1"
         fi
