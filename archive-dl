@@ -490,11 +490,11 @@ download_settings_menu()
 
 	    case ${menu} in
             0) 
-                MAX_RETRIES="$(dialog --title " Maximum Retries Allowed " \
+                MAX_RETRIES="$(dialog --title " Maximum Retries Allowed " --ok-label "Done" \
                     --rangebox --stdout "Notice: 0 Means Unlimited" 0 0 0 100 "$MAX_RETRIES")"
             ;;
             1) 
-                CONCURRENT_DWNLD="$(dialog --title " Number of Concurrent Downloads " \
+                CONCURRENT_DWNLD="$(dialog --title " Number of Concurrent Downloads " --ok-label "Done" \
                     --rangebox --stdout "Number of Files Downloaded at a Time" 0 0 1 100 "$CONCURRENT_DWNLD")"
             ;;
             2) 
