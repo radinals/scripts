@@ -531,20 +531,24 @@ download_files()
 
     # begin the download
     clear
-	aria2c --dry-run "$DRY_RUN" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
-        -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
-    dwnld_stat="$?"
-    
-    if [ "$DRY_RUN" == "false" ]; then
+    if [ "$DRY_RUN" == "true" ]; then
+        aria2c --dry-run "true" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
+            -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
+        dwnld_stat="$?"
+
+        # Delete auto-generated files if dry run is selected
+        rm -rf "$CUR_DWNLD_DIR"
+    else
+        aria2c -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
+            -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
+        dwnld_stat="$?"
+
         if [ "$dwnld_stat" -gt 0 ]; then
             # if any error occured move the download directory to 
             # the incomplete downloads directory
             mv "$CUR_DWNLD_DIR" "$INCMPLT_DWNLD_DIR"
             print_exit "Moved incomplete downloads to $INCMPLT_DWNLD_DIR" "1"
         fi
-    else
-        # Delete auto-generated files if dry run is selected
-        rm -rf "$CUR_DWNLD_DIR"
     fi
 }
 
