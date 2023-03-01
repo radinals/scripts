@@ -115,7 +115,6 @@ update_csv_data()
 
     # old data line to be changed
     old_data="$(tail -n 1 "$csv")"
-
     # format the new data
     new_data="$name,$url,$date,$group,$group_index,NULL"
 
@@ -186,11 +185,11 @@ edit_archv_group()
         done
 
         # choose the file
-        sel_archv="$(dialog --no-tags --reorder \
-            --buildlist --stdout "Select Archives to be Grouped" 0 0 0 "${sel_archv_opts[@]}")"
+        sel_archv=("$(dialog --no-tags --reorder \
+            --buildlist --stdout "Select Archives to be Grouped" 0 0 0 "${sel_archv_opts[@]}")")
         sel_archv_stat="$?"
         [ "$sel_archv_stat" -gt 0 ] && break
-        [ -z "$sel_archv" ] && continue
+        [ -z "${sel_archv[*]}" ] && continue
 
         [ -f "$GROUP_CACHE" ] && rm -f "$GROUP_CACHE"
         
@@ -224,7 +223,6 @@ edit_archv_menu()
         esac
     done
 }
-
 
 # select archive data to access
 sel_archive()
@@ -495,7 +493,15 @@ download_settings_menu()
 	    case ${menu} in
             0) MAX_RETRIES="$(dialog --rangebox --stdout "Maximum Retries" 0 0 0 100 "$MAX_RETRIES")";;
             1) CONCURRENT_DWNLD="$(dialog --rangebox --stdout "Number of Files Downloaded at a time" 0 0 1 100 "$CONCURRENT_DWNLD")";;
-            2) dialog --yesno "Dry Run? ($DRY_RUN)" 0 0 && DRY_RUN="true"
+            2) 
+                dialog --yesno "Dry Run? ($DRY_RUN)" 0 0 
+                answ="$?"
+                if [ "$answ" -ne 0 ]; then
+                    DRY_RUN="false" 
+                else
+                    DRY_RUN="true"
+                fi
+            ;;
         esac
     done
 }
@@ -606,7 +612,6 @@ update_list()
 
     print_msg "Process completed, $f_count Failed, out of $a_count"
 }
-
 
 continue_downloads()
 {
