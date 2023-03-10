@@ -1,6 +1,12 @@
 #!/bin/bash
 TMUX_RUNNING=$(pgrep tmux)
 
+error()
+{
+    printf "%s\n" "$1" 2>/dev/null
+    exit 1
+}
+
 # creates a window
 new_window()
 {
@@ -56,7 +62,7 @@ tmux_start()
 # switch to a selected session and kill the previous session
 switch_and_kill()
 {
-    [ -z "$TMUX" ] && [ -z "$TMUX_RUNNING" ] && exit 1
+    [ -z "$TMUX" ] && [ -z "$TMUX_RUNNING" ] && error "Tmux is not running"
 
     last_active_session="$(tmux list-sessions -F "#{session_activity} #{session_name}" | \
         sort -n | tail -n 1 | cut -d " " -f2-)"
@@ -84,7 +90,7 @@ sessionize()
     case "$1" in
         # sessionize a specified directory
 	    -target) 
-            [ ! -d "$2" ] && exit 1
+            [ ! -d "$2" ] && error "Target '$2' is not a directory"
             selected="$2"
         ;;
 
@@ -95,7 +101,7 @@ sessionize()
         -project) selected="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 1 -type d | fzf)";;
     esac
 
-    [ -z "$selected" ] || [ ! -d "$selected" ] && exit 1
+    [ -z "$selected" ] || [ ! -d "$selected" ] &&  error "invalid selection '$selected'"
 
     selected_name=$(basename "$selected" | tr . _)
 
