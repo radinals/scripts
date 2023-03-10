@@ -23,6 +23,7 @@ new_window()
 create_workspace()
 {
     session_name="$1"
+    path="$2"
     sel_window="1"
 
     tmux rename-window -t "$session_name" "ED"
@@ -30,7 +31,7 @@ create_workspace()
 
     # new_window "$session_name" "FM" "ranger"
 
-    tmux new-window -t "$session_name"
+    tmux new-window -t "$session_name" -c "$path"
     tmux rename-window -t "$session_name" "TERM"
 
     tmux select-window -t "$session_name:$sel_window"
@@ -111,8 +112,8 @@ sessionize()
     fi
 
     if ! tmux has-session -t="$selected_name" 2> /dev/null; then
-        tmux new-session -ds "$selected_name" -c "$selected"
-        create_workspace "$selected_name"
+        tmux new-session -d -s "$selected_name" -c "$selected"
+        create_workspace "$selected_name" "$selected"
     fi
 
     tmux switch-client -t "$selected_name" \
