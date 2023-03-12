@@ -4,45 +4,45 @@
 # \---- category/
 #       \---- video.mp4
 
-VID_DIR="$HOME/Videos"
-[ ! -d "$VID_DIR" ] && exit 1
+vid_dir="$HOME/Videos"
+[ ! -d "$vid_dir" ] && exit 1
 
 [ -n "$VIDEO" ] && \
-    V_PLAYER="$VIDEO" || V_PLAYER="xdg-open"
-[ ! "$(command -V "$V_PLAYER")" ] && exit 1
+    v_player="$VIDEO" || v_player="xdg-open"
 
-[ ! "$(command -V "fzf")" ] || \
+[ ! "$(command -V "$v_player")" ] || \
+    [ ! "$(command -V "fzf")" ] || \
     [ ! "$(command -V "dmenu")" ] && exit 1
-[ "$TERM" = "linux" ] && \
-    PROMPT="dmenu -i -l 50" || PROMPT="fzf"
+
+prompt="dmenu -i -l 50"
+[ "$1" = "-t" ] && prompt="fzf"
 
 while(true); do
 
-    CATEGORY=""
-    VID=""
+    category=""
+    vid=""
 
-    CATEGORY="$(find -L "$VID_DIR" \
+    category="$(find -L "$vid_dir" \
         -maxdepth 1 \
         -mindepth 1 \
         -type d \( -not -path '*/\.*' \) \
-        -exec basename {} \; | $PROMPT )"
+        -exec basename {} \; | $prompt )"
     
-    [ -z "$CATEGORY" ] && exit 1
+    [ -z "$category" ] && exit 1
 
-    if [ -z "$VID" ] && [ -n "$CATEGORY" ]; then
+    if [ -z "$vid" ] && [ -n "$category" ]; then
 
-        VID="$(find -L "$VID_DIR/$CATEGORY" \
-            -type f | \
-            awk -F "$VID_DIR/$CATEGORY/" '{print $2}' | $PROMPT )"
+        vid="$(find -L "$vid_dir/$category" -type f | \
+            awk -F "$vid_dir/$category/" '{print $2}' | $prompt )"
     fi
 
-    [ -f "$VID_DIR/$CATEGORY/$VID" ] && break
+    [ -f "$vid_dir/$category/$vid" ] && break
 
 done
 
-if [ -n "$VID" ] && [ -n "$CATEGORY" ]; then
-    "$V_PLAYER" "$VID_DIR/$CATEGORY/$VID" &
+if [ -n "$vid" ] && [ -n "$category" ]; then
+    "$v_player" "$vid_dir/$category/$vid" &
     exit 0
+else
+    exit 1
 fi
-
-exit 1
