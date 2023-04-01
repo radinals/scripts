@@ -21,6 +21,11 @@
 # - make the script to be able to go into folder in archives
 # - convert to different language
 
+# TODO: Archive Groups are lost when updating the archive. 
+# - Make The Group Stick between updates.
+
+# Be able to Process torrent files
+
 set -o pipefail
 
 # Directories and File Constants 
@@ -60,7 +65,7 @@ CONCURRENT_DWNLD="1"
 
 notify_msg(){ notify-send "$1" "$2"; }
 print_msg(){ printf "%s\n" "$1" 2>/dev/null; }
-print_exit(){ clear && print_msg "$1" && exit "$2"; }
+print_exit(){ clear && print_msg "$1" && exit 1; }
 
 # read from an archive ".csv" file, return metadata
 get_csv_data()
@@ -68,7 +73,7 @@ get_csv_data()
     arg="$1"
     csv="$2"
 
-    [ ! -f "$csv" ] && print_exit "file named $csv not found" "1"
+    [ ! -f "$csv" ] && print_exit "file named $csv not found"
     case ${arg} in
         name) 
             val="$( tail -n 1 "$csv" | awk -F "," '{print $1}' )"
@@ -78,7 +83,7 @@ get_csv_data()
         date) val="$( tail -n 1 "$csv" | awk -F "," '{print $3}' )";;
         group) val="$( tail -n 1 "$csv" | awk -F "," '{print $4}' )";;
         group_index) val="$( tail -n 1 "$csv" | awk -F "," '{print $5}' )";;
-        *) print_exit "unknown argument $arg" "1"
+        *) print_exit "unknown argument $arg"
     esac
 
     echo "$val"
@@ -90,7 +95,7 @@ update_csv_data()
     val=$2
     csv="$3"
 
-    [ ! -f "$csv" ] && print_exit "file named $csv not found" "1"
+    [ ! -f "$csv" ] && print_exit "file named $csv not found"
 
     # get the old data
     name="$(get_csv_data "name" "$csv")"
@@ -106,7 +111,7 @@ update_csv_data()
         date)date=$val;;
         group)group=$val;;
         group_index)group_index=$val;;
-        *) print_exit "unknown target $tag" "1"
+        *) print_exit "unknown target $tag"
     esac
 
     file_content="$(cat "$csv")"
@@ -272,7 +277,7 @@ sel_archive()
                     index="$(get_csv_data "group_index" "$file")"
 
                     # exit if the csv file has no index
-                    [ -z "$index" ] && print_exit "$file, has no group index" "1"
+                    [ -z "$index" ] && print_exit "$file, has no group index"
                     
                     # store the files by index
                     declare -A group_csv+=(["$index"]="$file")
@@ -299,14 +304,14 @@ sel_archive()
         opts+=("OFF")
     done
     
-    [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
+    [ -z "${opts[*]}" ] && print_exit "cancelled..."
 
 	SEL_ARCHV=("$(dialog --title " Archive Selection Menu " --reorder \
         --no-tags --separate-output --visit-items --buildlist \
         --stdout "Choose a Archive" 0 0 0 "${opts[@]}")")
     stat="$?"
 
-    [ "$stat" -gt 0 ] && print_exit "cancelled..." "1"
+    [ "$stat" -gt 0 ] && print_exit "cancelled..."
 }
 
 search_archv()
@@ -364,7 +369,7 @@ search_archv()
                 --stdout "Select Files to Download" 0 0 0 "${opts[@]}")"
             stat="$?"
 
-            if [ "$stat" -gt 0 ] || [ -z "$search_result" ]; then
+            if [ "$stat" -eq 0 ] && [ -n "$search_result" ]; then
                 QUERY_RESULT+=("$search_result")
             else
                 dialog --title " Canceled " --msgbox "Canceling Search..." 0 0
@@ -385,7 +390,7 @@ sel_files()
 
     while (true); do
 
-        [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..." "1"
+        [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..."
         archv_names=()
         opts=()
         csv_data=""
@@ -431,7 +436,7 @@ sel_files()
         # reset to false
         [ $search_files ] && search_files=0
 
-        [ -z "${opts[*]}" ] && print_exit "cancelled..." "1"
+        [ -z "${opts[*]}" ] && print_exit "cancelled..."
 
         SEL_FILES=("$(dialog --title "${archv_names[*]}" --reorder --no-tags \
             --separate-output --extra-button --extra-label "Search" --visit-items \
@@ -441,7 +446,7 @@ sel_files()
         if [ "$stat" -eq 0 ]; then
 
             # exit if nothing if nothing is selected
-            [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..." "1"
+            [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..."
 
             # otherwise, break out of the loop
             break
@@ -457,7 +462,7 @@ sel_files()
             # begin search
             search_files=1
         else
-            print_exit "cancelled..." "1"
+            print_exit "cancelled..."
         fi
     done
 }
@@ -478,21 +483,26 @@ download_settings_menu()
             --menu --stdout "Select a Setting to Change" 0 0 0 "${opts[@]}")"
         stat="$?"
 
-        [ "$stat" -eq 1 ] && print_exit "Canceled..." "1"
+        [ "$stat" -eq 1 ] && print_exit "Canceled..."
         [ "$stat" -gt 0 ] && break
 
 	    case ${menu} in
+
             0)  MAX_RETRIES="$(dialog --title " Maximum Retries Allowed " --ok-label "Done" \
                     --rangebox --stdout "Notice: 0 Means Unlimited" 0 0 0 100 "$MAX_RETRIES")"
             ;;
+
             1)  CONCURRENT_DWNLD="$(dialog --title " Number of Concurrent Downloads " --ok-label "Done" \
                     --rangebox --stdout "Number of Files Downloaded at a Time" 0 0 1 100 "$CONCURRENT_DWNLD")"
             ;;
+
             2)  dialog --title " Dry Run: ($DRY_RUN) " \
                     --yesno "Don't Download Anything, Just Check if the File Exists [Y/n]" 0 0 
                 answ="$?"
                 [ "$answ" -eq 0 ] && DRY_RUN="true" || DRY_RUN="false"
             ;;
+
+            # TODO: add option to select via file manager/similar
             3)  while(true); do
                     user_dwnld_dir="$(inputbox_menu "Enter the Download Path: " "$CUR_DWNLD_DIR")"
                     user_dwnld_dir_stat="$?"
@@ -500,6 +510,7 @@ download_settings_menu()
                     CUR_DWNLD_DIR="$user_dwnld_dir" && break
                 done
             ;;
+
         esac
     done
 }
@@ -510,14 +521,14 @@ download_files()
     sel_archive
     sel_files
 
-    [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..." "1"
+    [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..."
 
     # confirm download
 	dialog --title " Continue to Download? " \
         --yesno "Files to Download: $(printf "%s\n" "${SEL_FILES[@]}" | wc -l)" 0 0
 	answ="$?"
 
-	[ "$answ" -ne 0 ] && print_exit "cancelled..." "1"
+	[ "$answ" -ne 0 ] && print_exit "cancelled..."
 
     download_settings_menu
 
@@ -530,32 +541,44 @@ download_files()
     # begin the download
     clear
 
-    if [ "$DRY_RUN" == "true" ]; then
-        aria2c --dry-run "true" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
-            -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
-        dwnld_stat="$?"
+    aria2c --dry-run "$DRY_RUN" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
+        -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_DIR/$DWNLD_URL_NAME"
+    dwnld_stat="$?"
 
-        # Delete auto-generated files if dry run is selected
+    case ${dwnld_stat} in
+        0) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Ended Successfully..." ;;
+        1) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Ended With an Unknown Error..." ;;
+        2) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Timed Out!" ;;
+        3) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Resources Not Found!" ;;
+        4) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Resources Not Found!" ;;
+        5) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Aborted, speed too slow..." ;;
+        6) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Ended With a Network Problem..." ;;
+        7) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Ended With Partially Downloaded Files" ;;
+        9) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Aborted, Not Enough Space Left..." ;;
+        11) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Aborted, Another instance is Downloading the Same File" ;;
+        13) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Aborted, Already Exists!" ;;
+        19) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Aborted, Name Resolution Failed..." ;;
+        23) dwnld_result_msg="Download '$CUR_DWNLD_DIR' Aborted, Too Many Redirects!" ;;
+    esac
+
+    # Delete auto-generated files if dry run is selected
+    print_msg "$dwnld_result_msg" && notify-send "Archive.org Downloader" "$dwnld_result_msg" 2>/dev/null
+
+    if [ "$DRY_RUN" == "true" ]; then
         rm -rf "$CUR_DWNLD_DIR"
     else
-        aria2c -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
-            -d "$CUR_DWNLD_DIR" -i "$CUR_DWNLD_URL"
-        dwnld_stat="$?"
-
         if [ "$dwnld_stat" -gt 0 ]; then
             # if any error occured move the download directory to 
             # the incomplete downloads directory
             mv "$CUR_DWNLD_DIR" "$INCMPLT_DWNLD_DIR"
-            print_exit "Moved incomplete downloads to $INCMPLT_DWNLD_DIR" "1"
+            print_exit "Moved incomplete downloads to $INCMPLT_DWNLD_DIR"
         fi
     fi
 }
 
 update_list()
 {
-    clear
-
-    [ ! -f "$ARCHV_URL_FILE" ] && print_exit "Error: archive.url not found!" "1"
+    [ ! -f "$ARCHV_URL_FILE" ] && print_exit "Error: archive.url not found!"
 
 	dialog --yesno "Update Existing Files?" 0 0
 	answ="$?"
@@ -619,53 +642,25 @@ update_list()
 
 continue_downloads()
 {
-    # TODO:
-    # PRE-DOWNLOAD
-    # - Check for incomplete downloads
-    # - Ask user which to download
-    # BEGIN DOWNLOAD
-    # - If completed, move to download dir
-    # - If failed, prompt user of failure, exit
+    clear
+    mapfile -d $'\0' incmplt_dwnlds < \
+        <(find "$INCMPLT_DWNLD_DIR" -maxdepth 1 -mindepth 1 -type d -print0)
 
-    mapfile -d $'\0' dwnld_dir < <(find "$INCMPLT_DWNLD_DIR" -name "DWNLD-.*" -type d -print0)
-
-    [ -z "${dwnld_dir[*]}" ] && print_exit "Nothing to Download" "1"
-
-    incmplt_dwnld_menu_opts=()
-
-    for dir in "${dwnld_dir[@]}"; do
-        ! ls "$dir" | grep -Eq ".*.urls" && continue
-        
-        url_file="$(find "$dir" -maxdepth 1 -name "*.urls" -type f | head -n 1)"
-
-        incmplt_dwnld_menu_opts+=("$dir/$url_file $dir")
-        incmplt_dwnld_menu_opts+=("$(basename $dir)")
-    done
+    [ -z "${incmplt_dwnlds[*]}" ] && print_exit "Nothing to Download"
     
-    while (true); do
-        incmplt_dwnld_menu="$(dialog --no-tags -menu \
-            --stdout "Select an Incomplete Download" 0 0 0 "${incmplt_dwnld_menu_opts[@]}")"
-        incmplt_dwnld_menu_stat="$?"
-
-        [ "$incmplt_dwnld_menu_stat" -gt 0 ] & exit 1
-
-        aria2c -C --dry-run "$DRY_RUN" -m "$MAX_RETRIES" -j "$CONCURRENT_DWNLD" \
-            -d "$(cut -d " " -f2- <<< $incmplt_dwnld_menu)" -i "$(cut -d " " -f1- <<< $incmplt_dwnld_menu)"
-        dwnld_stat="$?"
-
-        # TODO: copy_paste!
-        # if [ "$DRY_RUN" == "false" ]; then
-        #     if [ "$dwnld_stat" -eq 0 ]; then
-        #         # TODO: What to do in case a download succeed
-        #     else
-        #         # TODO: What to do in case a download fails and etc
-        #     fi
-        # fi
+    opts=()
+    for dwnlds in "${incmplt_dwnlds[@]}"; do
+        dwnld="$(basename $dwnlds)"
+        opts+=()
+        opts+=()
     done
 
-    # check if there is any incomplete downloads
-    # show a menu of every incomplete download
-    #   if user select any, start the download
+    # select incomplete downloads
+    # download_settings
+    # dialog to edit url file
+    # begin download
+    # move to download dir if Successful
+    # print exit if not
 }
 
 main_menu(){
