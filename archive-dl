@@ -26,46 +26,64 @@
 
 # Be able to Process torrent files
 
+# TODO: Be compatible with termux (unrooted)
+# - path need to be fixed [?]
+# - fail on the first sign of errors that would be a major problem
+
 set -o pipefail
 
-# Directories and File Constants 
-PRG_DIR="$XDG_CONFIG_HOME/ArchiveDownloader"
-ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
-
-DWNLD_DIR="$PRG_DIR/Downloads"
-INCMPLT_DWNLD_DIR="$DWNLD_DIR/.incomplete"
-
-ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
-ARCHV_URL_FILE="$PRG_DIR/archive.urls"
-
-DWNLD_DIR_NAME="DWNLD-$(date '+%F@%H:%M:%S')"
-DWNLD_URL_NAME="DWNLD-$(date '+%F@%H:%M:%S').urls"
-
-CUR_DWNLD_DIR="$DWNLD_DIR/$DWNLD_DIR_NAME"
-GROUP_CACHE="$PRG_DIR/.group_cache"
-
-# Global Lists
-SEL_ARCHV=()
-SEL_FILES=()
-QUERY_RESULT=()
-mapfile -d $'\0' DATABASE < \
-    <(find "$ARCHV_CSV_DIR" -name "*.csv" -type f -print0)
-
-# aria2c settings
-DRY_RUN="false"
-MAX_RETRIES="0"
-CONCURRENT_DWNLD="1"
-
-# Create the directories if they doesn't exists
-[ ! -f "$GROUP_CACHE" ] && touch "$GROUP_CACHE"
-[ ! -d "$PRG_DIR" ] && mkdir -p "$PRG_DIR"
-[ ! -d "$DWNLD_DIR" ] && mkdir -p "$DWNLD_DIR"
-[ ! -d "$ARCHV_CSV_DIR" ] && mkdir -p "$ARCHV_CSV_DIR"
-[ ! -d "$INCMPLT_DWNLD_DIR" ] && mkdir -p "$INCMPLT_DWNLD_DIR"
-
+# TODO check also if notify-send is installed
 notify_msg(){ notify-send "$1" "$2"; }
 print_msg(){ printf "%s\n" "$1" 2>/dev/null; }
-print_exit(){ clear && print_msg "$1" && exit 1; }
+print_exit(){ print_msg "$1" && exit 1; }
+
+init_prg_vars()
+{
+    # Directories and File Constants 
+    if [ -n "$XDG_CONFIG_HOME" ]; then
+        PRG_DIR="$XDG_CONFIG_HOME/ArchiveDownloader"
+    else
+        PRG_DIR="$HOME/.config/ArchiveDownloader"
+    fi
+
+    ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
+
+    DWNLD_DIR="$PRG_DIR/Downloads"
+    INCMPLT_DWNLD_DIR="$DWNLD_DIR/.incomplete"
+
+    ARCHV_CSV_DIR="$PRG_DIR/ArchiveData"
+    ARCHV_URL_FILE="$PRG_DIR/archive.urls"
+
+    DWNLD_DIR_NAME="DWNLD-$(date '+%F@%H:%M:%S')"
+    DWNLD_URL_NAME="DWNLD-$(date '+%F@%H:%M:%S').urls"
+
+    CUR_DWNLD_DIR="$DWNLD_DIR/$DWNLD_DIR_NAME"
+    GROUP_CACHE="$PRG_DIR/.group_cache"
+
+    # Global Lists
+    SEL_ARCHV=()
+    SEL_FILES=()
+    QUERY_RESULT=()
+    mapfile -d $'\0' DATABASE < \
+        <(find "$ARCHV_CSV_DIR" -name "*.csv" -type f -print0)
+
+    # aria2c settings
+    DRY_RUN="false"
+    MAX_RETRIES="0"
+    CONCURRENT_DWNLD="1"
+
+    # Create the directories if they doesn't exists
+    if [ ! -d "$PRG_DIR" ]; then 
+        mkdir -p "$PRG_DIR" || print_exit "Path "$PRG_DIR" cannot be created"
+    fi
+
+    [ ! -f "$GROUP_CACHE" ] && touch "$GROUP_CACHE"
+    [ ! -d "$DWNLD_DIR" ] && mkdir -p "$DWNLD_DIR"
+    [ ! -d "$ARCHV_CSV_DIR" ] && mkdir -p "$ARCHV_CSV_DIR"
+    [ ! -d "$INCMPLT_DWNLD_DIR" ] && mkdir -p "$INCMPLT_DWNLD_DIR"
+
+    return 0
+}
 
 # read from an archive ".csv" file, return metadata
 get_csv_data()
@@ -125,13 +143,27 @@ update_csv_data()
     echo "${file_content/$old_data/$new_data}" > "$csv"
 }
 
+yesno_prompt()
+{
+    msg="$1"
+    prompt="$(dialog --yesno --stdout "$msg" 0 0)"
+    stat="$?"
+
+    [ stat -gt 0 ] && return 1
+
+    return 0
+}
+
 inputbox_menu()
 {
     question="$1"
     default_val="$2"
     answ="$(dialog --inputbox --stdout "$question" 0 0 "$default_val")"
     stat="$?"
-    [ $stat -eq 0 ] && echo "$answ"
+
+    [ $stat -gt 0 ] && return 1
+    echo "$answ"
+
 }
 
 edit_archv_name()
@@ -312,6 +344,7 @@ sel_archive()
     stat="$?"
 
     [ "$stat" -gt 0 ] && print_exit "cancelled..."
+    [ -n "${SEL_ARCHV[*]}" ] && return 0
 }
 
 search_archv()
@@ -390,7 +423,6 @@ sel_files()
 
     while (true); do
 
-        [ -z "${SEL_ARCHV[*]}" ] && print_exit "cancelled..."
         archv_names=()
         opts=()
         csv_data=""
@@ -465,6 +497,8 @@ sel_files()
             print_exit "cancelled..."
         fi
     done
+
+    [ -n "${SEL_FILES[*]}" ] && return 0
 }
 
 # set aria2c settings
@@ -518,10 +552,8 @@ download_settings_menu()
 # Download the files
 download_files()
 {
-    sel_archive
-    sel_files
-
-    [ -z "${SEL_FILES[*]}" ] && print_exit "cancelled..."
+    sel_archive || print_exit "error(s) occured when processing selected archive..."
+    sel_files || print_exit "error(s) occured when processing selected files..."
 
     # confirm download
 	dialog --title " Continue to Download? " \
@@ -663,7 +695,8 @@ continue_downloads()
     # print exit if not
 }
 
-main_menu(){
+main(){
+    init_prg_vars || print_exit "error(s) occured, exiting..."
 	opts=( 1 "Download Files" 2 "Update Lists" 3 "Continue Downloads" 4 "Edit Archives")
 	main_menu="$(dialog --title " Archive.org Downloader " --reorder --no-tags \
 		--menu --stdout "What to do?" 0 0 0 "${opts[@]}")"
@@ -675,4 +708,4 @@ main_menu(){
 	esac
 }
 
-main_menu
+main
