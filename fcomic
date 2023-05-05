@@ -1,0 +1,21 @@
+#!/bin/sh
+
+comic_dir="$HOME/Documents/Comics"
+[ ! -d "$comic_dir" ] && exit 1
+
+[ "$(command -V "notify-send")" ] && notify=1
+
+reader="mcomix"
+
+[ ! "$(command -V "$reader")" ] || \
+    [ ! "$(command -V "dm-dir")" ] && exit 1
+
+sel_comic="$(dm-dir "$comic_dir" "$1")"
+
+if [ -n "$sel_comic" ]; then
+    [ "$notify" ] && notify-send "fcomic" "Opening $sel_comic" 2>/dev/null &
+    "$reader" "$sel_comic" 2>/dev/null & 
+    exit 0
+else
+    exit 1
+fi

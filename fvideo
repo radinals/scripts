@@ -1,47 +1,21 @@
 #!/bin/sh
 
-# Videos/
-# \---- category/
-#       \---- video.mp4
-
 vid_dir="$HOME/Videos"
 [ ! -d "$vid_dir" ] && exit 1
 
+[ "$(command -V "notify-send")" ] && notify=1
+
 [ -n "$VIDEO" ] && \
-    v_player="$VIDEO" || v_player="xdg-open"
+    player="$VIDEO" || player="xdg-open"
 
-[ ! "$(command -V "$v_player")" ] || \
-    [ ! "$(command -V "fzf")" ] || \
-    [ ! "$(command -V "dmenu")" ] && exit 1
+[ ! "$(command -V "$player")" ] || \
+    [ ! "$(command -V "dm-dir")" ] && exit 1
 
-prompt="dmenu -i -l 50"
-[ "$1" = "-t" ] && prompt="fzf"
+sel_video="$(dm-dir "$vid_dir" "$1")"
 
-while(true); do
-
-    category=""
-    vid=""
-
-    category="$(find -L "$vid_dir" \
-        -maxdepth 1 \
-        -mindepth 1 \
-        -type d \( -not -path '*/\.*' \) \
-        -exec basename {} \; | $prompt )"
-    
-    [ -z "$category" ] && exit 1
-
-    if [ -z "$vid" ] && [ -n "$category" ]; then
-
-        vid="$(find -L "$vid_dir/$category" -type f | \
-            awk -F "$vid_dir/$category/" '{print $2}' | $prompt )"
-    fi
-
-    [ -f "$vid_dir/$category/$vid" ] && break
-
-done
-
-if [ -n "$vid" ] && [ -n "$category" ]; then
-    "$v_player" "$vid_dir/$category/$vid" &
+if [ -n "$sel_video" ]; then
+    [ "$notify" ] && notify-send "fvideo" "Opening $sel_video" 2>/dev/null &
+    "$player" "$sel_video" 2>/dev/null &
     exit 0
 else
     exit 1

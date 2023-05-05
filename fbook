@@ -1,46 +1,21 @@
 #!/bin/sh
 
-# Books/
-# \---- category/
-#       \---- book.pdf
-
 book_dir="$HOME/Documents/Books"
 [ ! -d "$book_dir" ] && exit 1
+
+[ "$(command -V "notify-send")" ] && notify=1
 
 [ -n "$READER" ] && \
     reader="$READER" || reader="xdg-open"
 
 [ ! "$(command -V "$reader")" ] || \
-    [ ! "$(command -V "fzf")" ] || \
-    [ ! "$(command -V "dmenu")" ] && exit 1
+    [ ! "$(command -V "dm-dir")" ] && exit 1
 
-prompt="dmenu -i -l 50"
-[ "$1" = "-t" ] && prompt="fzf"
+sel_book="$(dm-dir "$book_dir" "$1")"
 
-while(true); do
-
-    category=""
-    book=""
-
-    category="$(find "$book_dir" \
-        -maxdepth 1 -mindepth 1 -type d \
-        -exec basename {} \; | $prompt )"
-
-    [ -z "$category" ] && exit 1
-
-    if [ -z "$book" ] && [ -n "$category" ]; then
-
-        book="$(find "$book_dir/$category" \
-            -maxdepth 1 -mindepth 1 -type f \
-            -exec basename {} \; | $prompt )"
-    fi
-
-    [ -f "$book_dir/$category/$book" ] && break
-
-done
-
-if [ -n "$book" ] && [ -n "$category" ]; then
-    "$reader" "$book_dir/$category/$book" 2>/dev/null & 
+if [ -n "$sel_book" ]; then
+    [ "$notify" ] && notify-send "fbook" "Opening $sel_book" 2>/dev/null &
+    "$reader" "$sel_book" 2>/dev/null & 
     exit 0
 else
     exit 1
