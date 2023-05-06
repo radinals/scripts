@@ -13,7 +13,7 @@ reader="mcomix"
 sel_comic="$(dm-dir "$comic_dir" "$1")"
 
 if [ -n "$sel_comic" ]; then
-    [ "$notify" ] && notify-send "fcomic" "Opening $sel_comic" 2>/dev/null &
+    [ "$notify" ] && notify-send "fcomic" "Opening $(basename "$sel_comic")" 2>/dev/null &
     "$reader" "$sel_comic" 2>/dev/null & 
     exit 0
 else

@@ -14,7 +14,7 @@ vid_dir="$HOME/Videos"
 sel_video="$(dm-dir "$vid_dir" "$1")"
 
 if [ -n "$sel_video" ]; then
-    [ "$notify" ] && notify-send "fvideo" "Opening $sel_video" 2>/dev/null &
+    [ "$notify" ] && notify-send "fvideo" "Opening $(basename "$sel_video")" 2>/dev/null &
     "$player" "$sel_video" 2>/dev/null &
     exit 0
 else

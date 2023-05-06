@@ -14,7 +14,7 @@ book_dir="$HOME/Documents/Books"
 sel_book="$(dm-dir "$book_dir" "$1")"
 
 if [ -n "$sel_book" ]; then
-    [ "$notify" ] && notify-send "fbook" "Opening $sel_book" 2>/dev/null &
+    [ "$notify" ] && notify-send "fbook" "Opening $(basename "$sel_book")" 2>/dev/null &
     "$reader" "$sel_book" 2>/dev/null & 
     exit 0
 else
