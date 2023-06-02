@@ -8,46 +8,33 @@
 prompt="dmenu -i -l 50"
 [ "$2" = "-t" ] && prompt="fzf"
 
-query_result=""
-query_dir="$start_dir"
-
 timeout=10
 count=0
 
+query=""
+
+path="$start_dir"
+prev_path=""
+
 while(true); do
+    # [ "$count" -eq "$timeout" ] && exit 1
 
-    query="$(find -L "$query_dir" -maxdepth 1 -mindepth 1 \
+    query="$(find -L "$path" -maxdepth 1 -mindepth 1 \
         -exec basename {} \; | $prompt )"
+    [ -z "$query" ] && [ "$path" == "$start_dir" ] && break
 
-    [ "$count" == "$timeout" ] && exit 1
 
-    if [ -z "$query" ] ; then
-        if [ "$query_dir" != "$start_dir" ]; then
-            query_dir="$start_dir"
-            count=$(( count + 1 ))
-            continue
-        else
-            exit 1
-        fi
-
-    else
-        query_path="$query_dir/$query"
-
-        if [ -d "$query_path" ]; then
-            query_dir="$query_path"
-            continue
-
-        elif [ -f "$query_path" ]; then
-            query_result="$query_path"
+    if [ -n "$query" ]; then
+        if [ -f "$path/$query" ]; then
+            printf "%s\n" "$path/$query" 2>/dev/null &
             break
+
+        elif [ -d "$path/$query" ]; then
+            path="$path/$query"
+            continue
         fi
+    else
+        path="$start_dir"
     fi
-
+    # count=$(( count + 1 ))
 done
-
-if [ -n "$query_result" ]; then
-    printf "%s\n" "$query_result" 2>/dev/null &
-    exit 0
-else
-    exit 1
-fi
