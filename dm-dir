@@ -1,40 +1,68 @@
 #!/bin/bash
 
+set -o pipefail
+
 [ ! "$(command -V "fzf")" ] || \
     [ ! "$(command -V "dmenu")" ] && exit 1
 
-[ -d "$1" ] && start_dir="$1" || exit 1
+[ -d "$1" ] && start_path="$1" || exit 1
 
 prompt="dmenu -i -l 50"
 [ "$2" = "-t" ] && prompt="fzf"
 
-timeout=10
-count=0
-
+depth=0
 query=""
+path="$start_path"
 
-path="$start_dir"
-prev_path=""
+folder_list=()
+file_list=()
+path_history=()
+
+go_back_in_path()
+{
+    [ "$depth" -gt 0 ] && depth=$((depth - 1))
+    path="${path_history[$depth]}"
+}
 
 while(true); do
-    # [ "$count" -eq "$timeout" ] && exit 1
+    file_list=("$(find -L "$path" -maxdepth 1 -mindepth 1 -type f -printf "%f\n")")
+    folder_list=("$(find -L "$path" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")")
 
-    query="$(find -L "$path" -maxdepth 1 -mindepth 1 \
-        -exec basename {} \; | $prompt )"
-    [ -z "$query" ] && [ "$path" == "$start_dir" ] && break
-
-
-    if [ -n "$query" ]; then
-        if [ -f "$path/$query" ]; then
-            printf "%s\n" "$path/$query" 2>/dev/null &
-            break
-
-        elif [ -d "$path/$query" ]; then
-            path="$path/$query"
-            continue
-        fi
-    else
-        path="$start_dir"
+    if [ -z "${file_list[*]}" ] && [ -z "${folder_list[*]}" ]; then
+        go_back_in_path
+        continue
     fi
-    # count=$(( count + 1 ))
+
+    folder_content=()
+    for folder in "${folder_list[@]}"; do
+        [ -z "$folder" ] && continue
+        folder_content+=("$folder")
+    done
+
+    for file in "${file_list[@]}"; do
+        [ -z "$file" ] && continue
+        folder_content+=("$file")
+    done
+
+    query="$(printf "%s\n" "${folder_content[@]}" | $prompt)"
+
+    [ -z "$query" ] && [ "$path" == "$start_path" ] && break
+
+    if [ -z "$query" ]; then
+        [ "$path" == "$start_path" ] && exit 1
+        go_back_in_path
+        continue
+    fi
+
+    if [ -f "$path/$query" ]; then
+        printf "%s\n" "$path/$query" 2>/dev/null &
+        break
+
+    elif [ -d "$path/$query" ]; then
+        depth=$((depth + 1))
+        path_history+=("$path")
+        path="$path/$query"
+        continue
+
+    fi
 done
