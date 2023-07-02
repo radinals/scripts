@@ -15,8 +15,15 @@ sel_video="$(dm-dir "$vid_dir" "$1")"
 
 if [ -n "$sel_video" ]; then
     [ "$notify" ] && notify-send "fvideo" "Opening $(basename "$sel_video")" 2>/dev/null &
-    "$player" "$sel_video" 2>/dev/null &
+
+    if file --mime-type "$sel_video" | grep -q "audio"; then
+        $TERMINAL "$player" "$sel_video" 2>/dev/null &
+    else
+        "$player" "$sel_video" 2>/dev/null &
+    fi
+
     exit 0
+
 else
     exit 1
 fi
