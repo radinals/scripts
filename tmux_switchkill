@@ -1,0 +1,37 @@
+#!/bin/env bash
+
+TMUX_RUNNING=$(pgrep tmux)
+
+# prints an error message and die
+perror()
+{
+    printf "tmux_sessionizer: ERROR!: %s\n" "$1" >&2
+    # if tmux is running, display the message there
+    [ -n "$TMUX_RUNNING" ] && tmux display-message "$1" >&2
+    exit 1
+}
+
+switchkill()
+{
+    [ -z "$TMUX" ] && [ -z "$TMUX_RUNNING" ] && error "Tmux is not running"
+
+    last_active_session="$(tmux list-sessions -F "#{session_activity} #{session_name}" | \
+        sort -n | tail -n 1 | cut -d " " -f2-)"
+
+    switch_target="$(tmux list-sessions | \
+        grep -w -v "$last_active_session" | fzf | cut -d ":" -f1)"
+
+    session_is_attached "$switch_target" && tmux detach -s "$switch_target"
+
+    tmux switch-client -t "$switch_target"
+    tmux kill-session -t "$last_active_session"
+}
+
+# make sure the required commands are available
+[ ! "$(command -V "tmux")" ] || [ ! "$(command -V "fzf")" ] && \
+    perror "pre run check failed!, make sure required programs are installed.."
+
+# exit if no tmux process found
+[ -z "$TMUX_RUNNING" ] && perror "Aborting, no tmux process found."
+
+switchkill

@@ -1,0 +1,125 @@
+#!/bin/env bash
+
+TMUX_RUNNING=$(pgrep tmux)
+TEXT_EDITOR="$(which nvim)"
+
+ProjectHome="$HOME/Programming"
+
+# paths that would be sessionize by default
+PROJECT_DIR=(
+    "$ProjectHome/repositories"
+    "$ProjectHome/.reffrences"
+    "$ProjectHome/work_in_progress"
+    "$ProjectHome/python_projects"
+    "$ProjectHome/godot"
+)
+
+# prints an error message and die
+perror()
+{
+    printf "tmux_sessionizer: ERROR!: %s\n" "$1" >&2
+    # if tmux is running, display the message there
+    [ -n "$TMUX_RUNNING" ] && tmux display-message "$1" >&2
+    exit 1
+}
+
+# check if path is valid
+path_is_valid()
+{
+    [ -n "$1" ] && [ -d "$1" ] && return 0 || return 1
+}
+
+# checks if project is a godot project
+is_godot_project()
+{
+    [ -f "$1/project.godot" ] && return 0 || return 1
+}
+
+# setups nvim for godot
+setup_godot()
+{
+    nvim_godot_cmd="nvim --listen ./godothost ."
+    tmux send-keys -t "$session_name" "$nvim_godot_cmd" C-m
+    tmux display-message \
+        "Godot project detected... listening to 'godothost' server..."
+}
+
+# creates a window
+# also runs a command in the window if specified
+create_new_window()
+{
+    session_name="$1"
+    window_name="$2"
+    cmd="$3"
+    path="$4"
+
+    # path is invalid, use $HOME
+    ! path_is_valid "$path" && path="$HOME"
+
+    tmux new-window -t "$session_name" -c "$path"
+    tmux rename-window -t "$session_name" "$window_name"
+
+    [ -n "$cmd" ] && tmux send-keys -t "$session_name" "$cmd" C-m
+}
+
+# setups the window layouts
+create_workspace()
+{
+    session_name="$1"
+    path="$2"
+
+    main_window="1"
+
+    tmux rename-window -t "$session_name" "CODE"
+
+    if is_godot_project "$path"; then
+        setup_godot
+    else
+        tmux send-keys -t "$session_name" "$TEXT_EDITOR" C-m
+    fi
+
+    create_new_window "$session_name" "TERM" "" "$path"
+    tmux select-window -t "$session_name:$main_window"
+}
+
+# sessionize a directory
+sessionize()
+{
+    path=$1
+
+    ! path_is_valid "$path" &&  perror "invalid path, '$path'"
+
+    session_name=$(basename "$path" | tr . _)
+
+    if [ -z "$TMUX" ] && [ -z "$TMUX_RUNNING" ]; then
+        tmux new-session -s "$session_name" -c "$path"
+        exit 0
+    fi
+
+    if ! tmux has-session -t="$session_name" 2> /dev/null; then
+        tmux new-session -d -s "$session_name" -c "$path"
+        create_workspace "$session_name" "$path"
+    fi
+
+    tmux switch-client -t "$session_name" \
+        || tmux attach-session -t "$session_name"
+}
+
+# make sure the required commands are available
+[ ! "$(command -V "tmux")" ] || [ ! "$(command -V "fzf")" ] || \
+    [ ! "$(command -V "$TEXT_EDITOR")" ] && \
+    perror "pre run check failed!, make sure required programs are installed.."
+
+# exit if no tmux process found
+[ -z "$TMUX_RUNNING" ] && perror "Aborting, no tmux process found."
+
+case "$1" in
+	-t)
+        sessionize "$2"
+    ;;
+
+    *)
+        path="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 2 -type d | fzf)"
+        sessionize "$path"
+    ;;
+esac

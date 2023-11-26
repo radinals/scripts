@@ -1,0 +1,60 @@
+#!/bin/env bash
+
+is_installed()
+{
+    program="$1"
+
+    if [ "$(command -V "$program")" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+tmux_start()
+{
+    session_name="MAIN"
+    path="$HOME"
+
+    win_1_title="TASK"
+    win_1_cmd="calcurse"
+
+    win_2_title="FILE"
+    win_2_cmd="ranger"
+
+    win_3_title="MUSIC"
+    win_3_cmd="cmus"
+
+    if ! tmux has-session -t="$session_name" 2> /dev/null; then
+        # the first window is path when finished
+        sel_window="1"
+
+        # create the session
+        tmux new-session -ds "$session_name" -c "$HOME"
+
+        # create the windows
+
+        # window 1
+        if is_installed "$win_1_cmd"; then
+            tmux rename-window -t "$session_name" "$win_1_title"
+            tmux send-keys -t "$session_name" "$win_1_cmd" C-m
+        fi
+
+        # window 2
+        is_installed "$win_2_cmd" && \
+            create_new_window "$session_name" "$win_2_title" "$win_2_cmd"
+
+        # window 3
+        is_installed "$win_3_cmd" && \
+            create_new_window "$session_name" "$win_3_title" "$win_3_cmd"
+
+        # go back to the first window
+        tmux select-window -t "$session_name:$sel_window"
+    else
+        tmux detach -s "$session_name"
+    fi
+
+    tmux attach-session -t "$session_name"
+}
+
+tmux_start
