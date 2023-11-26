@@ -11,6 +11,24 @@ is_installed()
     fi
 }
 
+# creates a window
+# also runs a command in the window if specified
+create_new_window()
+{
+    session_name="$1"
+    window_name="$2"
+    cmd="$3"
+    path="$4"
+
+    # path is invalid, use $HOME
+    ! path_is_valid "$path" && path="$HOME"
+
+    tmux new-window -t "$session_name" -c "$path"
+    tmux rename-window -t "$session_name" "$window_name"
+
+    [ -n "$cmd" ] && tmux send-keys -t "$session_name" "$cmd" C-m
+}
+
 tmux_start()
 {
     session_name="MAIN"
