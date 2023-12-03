@@ -21,6 +21,8 @@ switchkill()
     switch_target="$(tmux list-sessions | \
         grep -w -v "$last_active_session" | fzf | cut -d ":" -f1)"
 
+    [ -z "$switch_target" ] && exit 1
+
     session_is_attached "$switch_target" && tmux detach -s "$switch_target"
 
     tmux switch-client -t "$switch_target"
