@@ -5,25 +5,27 @@ vid_dir="$HOME/Videos"
 
 [ "$(command -V "notify-send")" ] && notify=1
 
+player_args=""
+
 [ -n "$VIDEO" ] && \
     player="$VIDEO" || player="xdg-open"
+
+[ "$player" = "mpv" ] && \
+    player_args="--no-config --load-scripts=no"
 
 [ ! "$(command -V "$player")" ] || \
     [ ! "$(command -V "dm-dir")" ] && exit 1
 
 sel_video="$(dm-dir "$vid_dir" "$1")"
 
-if [ -n "$sel_video" ]; then
-    [ "$notify" ] && notify-send "fvideo" "Opening $(basename "$sel_video")" 2>/dev/null &
+[ -z "$sel_video" ] && exit 1
 
-    if file --mime-type "$sel_video" | grep -q "audio"; then
-        $TERMINAL "$player" "$sel_video" 2>/dev/null &
-    else
-        "$player" "$sel_video" 2>/dev/null &
-    fi
+[ "$notify" ] && notify-send "fvideo" "Opening, $(basename "$sel_video")" 2>/dev/null &
 
-    exit 0
-
+if ( file --mime-type "$sel_video" | grep -q "audio" ) && [ "$player" = "mpv" ]; then
+    $TERMINAL "$player" "$player_args" "$sel_video" 2>/dev/null &
 else
-    exit 1
+    "$player" "$player_args" "$sel_video" 2>/dev/null &
 fi
+
+exit 0

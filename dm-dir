@@ -5,64 +5,126 @@ set -o pipefail
 [ ! "$(command -V "fzf")" ] || \
     [ ! "$(command -V "dmenu")" ] && exit 1
 
-[ -d "$1" ] && start_path="$1" || exit 1
+# TODO: REAL COMMANDLINE FLAG PARSER
+[ -d "$1" ] && STARTING_PATH="$1" || exit 1
 
-prompt="dmenu -i -l 50"
-[ "$2" = "-t" ] && prompt="fzf"
+PROMPT="dmenu -i -l 50"
+[ "$2" == "-t" ] && PROMPT="fzf"
 
-depth=0
-query=""
-path="$start_path"
+SORT_ENTRIES=0
+[ "$3" == "-s" ] && SORT_ENTRIES=1
 
-folder_list=()
-file_list=()
-path_history=()
+CURRENT_PATH="$STARTING_PATH"
+MAX_FIND_DEPTH=1
+PATH_HISTORY=()
+PATH_DEPTH=0
+QUERY=""
 
-go_back_in_path()
+# gets the content of CURRENT_PATH
+path_content()
 {
-    [ "$depth" -gt 0 ] && depth=$((depth - 1))
-    path="${path_history[$depth]}"
+    # filetype of the thing to find
+    type="$1"
+
+    if [ -n "$type" ]; then
+        find -L "$CURRENT_PATH" -maxdepth "$MAX_FIND_DEPTH" -mindepth 1 -type "$type" -printf "%f\n"
+    else
+        find -L "$CURRENT_PATH" -maxdepth "$MAX_FIND_DEPTH" -mindepth 1 -printf "%f\n"
+    fi
 }
 
-while(true); do
-    file_list=("$(find -L "$path" -maxdepth 1 -mindepth 1 -type f -printf "%f\n")")
-    folder_list=("$(find -L "$path" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")")
+# reset PATH_HISTORY
+reset_path_history()
+{
+    PATH_DEPTH=0
+    PATH_HISTORY=()
+}
 
-    if [ -z "${file_list[*]}" ] && [ -z "${folder_list[*]}" ]; then
-        go_back_in_path
-        continue
-    fi
+# add path to PATH_HISTORY
+append_to_path_history()
+{
+    PATH_DEPTH=$((PATH_DEPTH + 1))
+    PATH_HISTORY+=("$1")
+}
 
-    folder_content=()
-    for folder in "${folder_list[@]}"; do
-        [ -z "$folder" ] && continue
-        folder_content+=("$folder")
+# go back in PATH_HISTORY
+go_back_in_path()
+{
+    [ "$PATH_DEPTH" -gt 0 ] && PATH_DEPTH=$((PATH_DEPTH - 1))
+    CURRENT_PATH="${PATH_HISTORY[$PATH_DEPTH]}"
+}
+
+# folders go before files
+sorted_path_content()
+{
+    files=("$(path_content "f")")
+    directories=("$(path_content "d")")
+    
+    dir_content=()
+
+    for dir in "${directories[@]}"; do
+        [ -n "$dir" ] && dir_content+=("$dir")
     done
 
-    for file in "${file_list[@]}"; do
-        [ -z "$file" ] && continue
-        folder_content+=("$file")
+    for file in "${files[@]}"; do
+        [ -n "$file" ] && dir_content+=("$file")
     done
 
-    query="$(printf "%s\n" "${folder_content[@]}" | $prompt)"
+    echo "${dir_content[@]}"
+}
 
-    [ -z "$query" ] && [ "$path" == "$start_path" ] && break
+main()
+{
+    while(true); do
 
-    if [ -z "$query" ]; then
-        [ "$path" == "$start_path" ] && exit 1
-        go_back_in_path
-        continue
-    fi
+        # reset the history if the current path is the starting path
+        [ "$PATH_DEPTH" -gt 0 ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && reset_path_history
 
-    if [ -f "$path/$query" ]; then
-        printf "%s\n" "$path/$query" 2>/dev/null &
-        break
+        # files or folders in CURRENT_PATH
+        directory_content=()
 
-    elif [ -d "$path/$query" ]; then
-        depth=$((depth + 1))
-        path_history+=("$path")
-        path="$path/$query"
-        continue
+        # get the content of CURRENT_PATH
+        if [ "$SORT_ENTRIES" -eq 1 ]; then 
+            directory_content=("$(sorted_path_content)")
+        else
+            directory_content=("$(path_content)")
+        fi
+        
+        # if nothing was found in the CURRENT_PATH go back
+        if [ -z "${directory_content[*]}" ]; then
+            go_back_in_path
+            continue
+        fi
 
-    fi
-done
+        QUERY="$(printf "%s\n" "${directory_content[@]}" | $PROMPT)"
+        
+        # exit if nothing was selected, and current path is the starting path
+        [ -z "$QUERY" ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && break
+        
+        # go back if nothing was selected
+        if [ -z "$QUERY" ]; then
+            go_back_in_path
+            continue
+        fi
+        
+        # break the loop if a file was selected, and output the path of the file
+        if [ -f "$CURRENT_PATH/$QUERY" ]; then
+            printf "%s\n" "$CURRENT_PATH/$QUERY" 2>/dev/null &
+            break
+        
+        # if a directory is selected, go inside it
+        elif [ -d "$CURRENT_PATH/$QUERY" ]; then
+            
+            # save the current path
+            append_to_path_history "$CURRENT_PATH"
+
+            # append to current path
+            CURRENT_PATH="$CURRENT_PATH/$QUERY"
+
+            continue
+        fi
+
+    done
+}
+
+main

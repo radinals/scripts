@@ -11,12 +11,12 @@ book_dir="$HOME/Documents/Books"
 [ ! "$(command -V "$reader")" ] || \
     [ ! "$(command -V "dm-dir")" ] && exit 1
 
-sel_book="$(dm-dir "$book_dir" "$1")"
+sel_book="$(dm-dir "$book_dir" "$1" -s)"
 
-if [ -n "$sel_book" ]; then
-    [ "$notify" ] && notify-send "fbook" "Opening $(basename "$sel_book")" 2>/dev/null &
-    "$reader" "$sel_book" 2>/dev/null & 
-    exit 0
-else
-    exit 1
-fi
+[ -z "$sel_book" ] && exit 1
+
+[ "$notify" ] && notify-send "fbook" "Opening, $(basename "$sel_book")" 2>/dev/null &
+
+"$reader" "$sel_book" 2>/dev/null & 
+
+exit 0
