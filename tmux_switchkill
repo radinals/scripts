@@ -15,10 +15,10 @@ switchkill()
 {
     [ -z "$TMUX" ] && [ -z "$TMUX_RUNNING" ] && error "Tmux is not running"
 
-    last_active_session="$(tmux list-sessions -F "#{session_activity} #{session_name}" | \
+    local last_active_session="$(tmux list-sessions -F "#{session_activity} #{session_name}" | \
         sort -n | tail -n 1 | cut -d " " -f2-)"
 
-    switch_target="$(tmux list-sessions | \
+    local switch_target="$(tmux list-sessions | \
         grep -w -v "$last_active_session" | fzf | cut -d ":" -f1)"
 
     [ -z "$switch_target" ] && exit 1
