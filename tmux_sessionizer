@@ -113,13 +113,18 @@ sessionize()
 # exit if no tmux process found
 [ -z "$TMUX_RUNNING" ] && perror "Aborting, no tmux process found."
 
+path=""
+
 case "$1" in
 	-t)
-        sessionize "$2"
+        path="$2"
     ;;
 
     *)
-        path="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 2 -type d | fzf)"
-        sessionize "$path"
+        path="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 2 \
+            -type d \( ! -path "*.git*" -o -path "__*__" \) \
+            -prune -o -name -print0 | fzf )"
     ;;
 esac
+
+[ -d "$path" ] && sessionize "$path" || exit 1
