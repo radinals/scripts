@@ -38,7 +38,7 @@ is_godot_project()
 # setups nvim for godot
 setup_godot()
 {
-    nvim_godot_cmd="nvim --listen ./godothost ."
+    local nvim_godot_cmd="nvim --listen ./godothost ."
     tmux send-keys -t "$session_name" "$nvim_godot_cmd" C-m
     tmux display-message \
         "Godot project detected... listening to 'godothost' server..."
@@ -48,10 +48,10 @@ setup_godot()
 # also runs a command in the window if specified
 create_new_window()
 {
-    session_name="$1"
-    window_name="$2"
-    cmd="$3"
-    path="$4"
+    local session_name="$1"
+    local window_name="$2"
+    local cmd="$3"
+    local path="$4"
 
     # path is invalid, use $HOME
     ! path_is_valid "$path" && path="$HOME"
@@ -65,10 +65,10 @@ create_new_window()
 # setups the window layouts
 create_workspace()
 {
-    session_name="$1"
-    path="$2"
+    local session_name="$1"
+    local path="$2"
 
-    main_window="1"
+    local main_window="1"
 
     tmux rename-window -t "$session_name" "CODE"
 
@@ -85,11 +85,11 @@ create_workspace()
 # sessionize a directory
 sessionize()
 {
-    path=$1
+    local path="$1"
 
     ! path_is_valid "$path" &&  perror "invalid path, '$path'"
 
-    session_name=$(basename "$path" | tr . _)
+    local session_name=$(basename "$path" | tr . _)
 
     if [ -z "$TMUX" ] && [ -z "$TMUX_RUNNING" ]; then
         tmux new-session -s "$session_name" -c "$path"
@@ -116,7 +116,7 @@ sessionize()
 path=""
 
 case "$1" in
-	-t)
+    -t)
         path="$2"
     ;;
 
