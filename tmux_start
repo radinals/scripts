@@ -2,23 +2,23 @@
 
 is_installed()
 {
-    program="$1"
+    [ "$(command -V "$1")" ] && return 0 || return 1
+}
 
-    if [ "$(command -V "$program")" ]; then
-        return 0
-    else
-        return 1
-    fi
+# check if path is valid
+path_is_valid()
+{
+    [ -n "$1" ] && [ -d "$1" ] && return 0 || return 1
 }
 
 # creates a window
 # also runs a command in the window if specified
 create_new_window()
 {
-    session_name="$1"
-    window_name="$2"
-    cmd="$3"
-    path="$4"
+    local session_name="$1"
+    local window_name="$2"
+    local cmd="$3"
+    local path="$4"
 
     # path is invalid, use $HOME
     ! path_is_valid "$path" && path="$HOME"
@@ -31,17 +31,17 @@ create_new_window()
 
 tmux_start()
 {
-    session_name="MAIN"
-    path="$HOME"
+    local session_name="MAIN"
+    local path="$HOME"
 
-    win_1_title="TASK"
-    win_1_cmd="calcurse"
+    local win_1_title="TASK"
+    local win_1_cmd="calcurse"
 
-    win_2_title="FILE"
-    win_2_cmd="ranger"
+    local win_2_title="FILE"
+    local win_2_cmd="ranger"
 
-    win_3_title="MUSIC"
-    win_3_cmd="cmus"
+    local win_3_title="MUSIC"
+    local win_3_cmd="cmus"
 
     if ! tmux has-session -t="$session_name" 2> /dev/null; then
         # the first window is path when finished
@@ -54,8 +54,8 @@ tmux_start()
 
         # window 1
         if is_installed "$win_1_cmd"; then
-            tmux send-keys -t "$session_name" "$win_1_cmd" C-m
             tmux rename-window -t "$session_name" "$win_1_title"
+            tmux send-keys -t "$session_name" "$win_1_cmd" C-m
         fi
 
         # window 2
