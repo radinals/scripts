@@ -59,7 +59,7 @@ sorted_path_content()
 {
     files=("$(path_content "f")")
     directories=("$(path_content "d")")
-    
+
     dir_content=()
 
     for dir in "${directories[@]}"; do
@@ -84,12 +84,12 @@ main()
         directory_content=()
 
         # get the content of CURRENT_PATH
-        if [ "$SORT_ENTRIES" -eq 1 ]; then 
+        if [ "$SORT_ENTRIES" -eq 1 ]; then
             directory_content=("$(sorted_path_content)")
         else
             directory_content=("$(path_content)")
         fi
-        
+
         # if nothing was found in the CURRENT_PATH go back
         if [ -z "${directory_content[*]}" ]; then
             go_back_in_path
@@ -97,24 +97,24 @@ main()
         fi
 
         QUERY="$(printf "%s\n" "${directory_content[@]}" | $PROMPT)"
-        
+
         # exit if nothing was selected, and current path is the starting path
         [ -z "$QUERY" ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && break
-        
+
         # go back if nothing was selected
         if [ -z "$QUERY" ]; then
             go_back_in_path
             continue
         fi
-        
+
         # break the loop if a file was selected, and output the path of the file
         if [ -f "$CURRENT_PATH/$QUERY" ]; then
             printf "%s\n" "$CURRENT_PATH/$QUERY" 2>/dev/null &
             break
-        
+
         # if a directory is selected, go inside it
         elif [ -d "$CURRENT_PATH/$QUERY" ]; then
-            
+
             # save the current path
             append_to_path_history "$CURRENT_PATH"
 
