@@ -24,7 +24,7 @@ QUERY=""
 path_content()
 {
     # filetype of the thing to find
-    type="$1"
+    local type="$1"
 
     if [ -n "$type" ]; then
         find -L "$CURRENT_PATH" -maxdepth "$MAX_FIND_DEPTH" -mindepth 1 -type "$type" -printf "%f\n"
@@ -57,10 +57,10 @@ go_back_in_path()
 # folders go before files
 sorted_path_content()
 {
-    files=("$(path_content "f")")
-    directories=("$(path_content "d")")
+    local files=("$(path_content "f")")
+    local directories=("$(path_content "d")")
 
-    dir_content=()
+    local dir_content=()
 
     for dir in "${directories[@]}"; do
         [ -n "$dir" ] && dir_content+=("$dir")
@@ -81,7 +81,7 @@ main()
         [ "$PATH_DEPTH" -gt 0 ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && reset_path_history
 
         # files or folders in CURRENT_PATH
-        directory_content=()
+        local directory_content=()
 
         # get the content of CURRENT_PATH
         if [ "$SORT_ENTRIES" -eq 1 ]; then
