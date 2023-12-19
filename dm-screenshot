@@ -9,11 +9,12 @@ prompt="dmenu -i -l 50"
 [ "$2" = "-t" ] && prompt="fzf"
 
 save_path="$HOME/Pictures/Screenshots"
-file_name="screenshot-$(date '+%d_%m_%y@%k_%M_%S').png"
 
 [ ! -d "$save_path" ] && mkdir -p "$save_path"
 
-maim_cmd="maim -B -u -f png -m 5 $save_path/$file_name --quiet"
+file_name="screenshot-$(date '+%d-%m-%y@%s').png"
+
+maim_cmd="maim -B -u -f png -m 5 "$save_path/$file_name" --quiet"
 
 prompt="$(printf "%s\n" "1. Take Shot" "2. Section" "3. View Screenshots" | \
     $prompt | tr " " _)"
@@ -25,5 +26,5 @@ case ${prompt} in
     *) exit 1;;
 esac
 
-[ "$(command -V "notify-send")" ] && \
+[ "$(command -V "notify-send")" ] && [ -f "$save_path/$file_name" ] && \
     notify-send "dm-screenshot" "Screenshot Taken! saved as $file_name"
