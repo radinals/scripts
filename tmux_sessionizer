@@ -49,15 +49,13 @@ setup_godot()
 create_new_window()
 {
     local session_name="$1"
-    local window_name="$2"
-    local cmd="$3"
-    local path="$4"
+    local cmd="$2"
+    local path="$3"
 
     # path is invalid, use $HOME
     ! path_is_valid "$path" && path="$HOME"
 
     tmux new-window -t "$session_name" -c "$path"
-    tmux rename-window -t "$session_name" "$window_name"
 
     [ -n "$cmd" ] && tmux send-keys -t "$session_name" "$cmd" C-m
 }
@@ -70,7 +68,7 @@ create_workspace()
 
     local main_window="1"
 
-    tmux rename-window -t "$session_name" "CODE"
+    # tmux rename-window -t "$session_name" "CODE"
 
     if is_godot_project "$path"; then
         setup_godot
@@ -78,7 +76,7 @@ create_workspace()
         tmux send-keys -t "$session_name" "$TEXT_EDITOR" C-m
     fi
 
-    create_new_window "$session_name" "TERM" "" "$path"
+    create_new_window "$session_name" "" "$path"
     tmux select-window -t "$session_name:$main_window"
 }
 
