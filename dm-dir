@@ -8,7 +8,7 @@ set -o pipefail
 # TODO: REAL COMMANDLINE FLAG PARSER
 [ -d "$1" ] && STARTING_PATH="$1" || exit 1
 
-PROMPT="dmenu -i -l 50"
+PROMPT="dmenu -p SELECT: -i -g 3 -l 15"
 [ "$2" == "-t" ] && PROMPT="fzf"
 
 SORT_ENTRIES=0
