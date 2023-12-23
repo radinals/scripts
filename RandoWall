@@ -1,5 +1,8 @@
 #!/bin/bash
 wp_dir="$HOME/Pictures/Wallpapers"
 [ ! -d "$wp_dir" ] || [ ! "$(command -V "hsetroot")" ] && exit 1
-mapfile -d $'\0' Wallpapers < <(find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' \) -print0)
-hsetroot -root -fill "${Wallpapers[$((RANDOM % ${#Wallpapers[@]} + 0))]}" 1>/dev/null && exit 0 || exit 1
+mapfile -d $'\0' Wallpapers < <( \
+    find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' \) -print0)
+file="${Wallpapers[$((RANDOM % ${#Wallpapers[@]} + 0))]}"
+hsetroot -root -fill \
+    "$file" 1>/dev/null && exit 0 || exit 1
