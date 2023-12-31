@@ -18,6 +18,11 @@ clear_empty_file()
 
 get_file_type()
 {
+    local filename
+    local ext
+    local fname
+    local filetype
+
     filename="$(basename "$1")"
     ext="${filename##*.}"
     fname="${filename%.*}"
