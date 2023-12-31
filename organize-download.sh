@@ -3,12 +3,11 @@
 download_dir_files=( "$HOME/Downloads"/* )
 storage_path="$HOME/Downloads/.storage"
 
-[ ! -d "$storage_path" ] && perror "Invalid Path '$storage_path'"
-
-perror()
-{
-    printf "%s\n" "$1" && exit 1
-}
+if [ ! -d "$storage_path" ]; then
+    echo "No path named, '$storage_path', creating now..."
+    mkdir -p "$storage_path"
+    echo "Done..."
+fi
 
 clear_empty_file()
 {
