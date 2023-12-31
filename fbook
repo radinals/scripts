@@ -17,6 +17,6 @@ sel_book="$(dm-dir "$book_dir" "$1" -s)"
 
 [ "$notify" ] && notify-send "fbook" "Opening, $(basename "$sel_book")" 2>/dev/null &
 
-"$reader" "$sel_book" 2>/dev/null & 
+"$reader" "$sel_book" 2>/dev/null &
 
 exit 0
