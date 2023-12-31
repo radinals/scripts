@@ -1,13 +1,72 @@
 #!/usr/bin/bash
-DownloadDirFiles=( "$HOME/Downloads"/* )
-DownloadStorage="$HOME/Downloads/.storage"
-for file in "${DownloadDirFiles[@]}"
+
+download_dir_files=( "$HOME/Downloads"/* )
+storage_path="$HOME/Downloads/.storage"
+
+[ ! -d "$storage_path" ] && perror "Invalid Path '$storage_path'"
+
+perror()
+{
+    printf "%s\n" "$1" && exit 1
+}
+
+clear_empty_file()
+{
+    echo "Clearing Empty Directories at '$storage_path'..."
+    find "$storage_path" -type d -empty -delete
+    echo "Done.."
+}
+
+get_file_type()
+{
+    filename="$(basename "$1")"
+    ext="${filename##*.}"
+    fname="${filename%.*}"
+
+    filetype=""
+
+    case "${ext}" in
+        txt) filetype="plaintext" ;;
+        cpp) filetype="source_cpp" ;;
+        tar) filetype="archive_tar" ;;
+        zip) filetype="archive_zip" ;;
+        7z) filetype="archive_7z" ;;
+        docx) filetype="doc_msdocx" ;;
+        pptx) filetype="doc_mspptx" ;;
+        pdf) filetype="doc_pdf" ;;
+        epub) filetype="doc_epub" ;;
+        md) filetype="markdown" ;;
+        mp4) filetype="video_mp4" ;;
+        AppImage) filetype="appimage" ;;
+        jpg) filetype="image_jpg" ;;
+        png) filetype="image_png" ;;
+        webp) filetype="image_webp" ;;
+        # *)  ;;
+    esac
+
+    case "${fname}" in
+        LICENSE) filetype="plaintext" ;;
+        # *)  ;;
+    esac
+
+    [ -z "$filetype" ] && filetype="$(file -p -b "$file" | cut -d " " -f1)"
+
+    echo "$filetype"
+}
+
+for file in "${download_dir_files[@]}"
 do
 	[ ! -f "$file" ] && continue
-    tStamp="$(stat -c "%y" "$file" | cut -d " " -f1)"
-    fType="$(file -p -b "$file" | cut -d " " -f1)"
-    mkdir -p "$DownloadStorage/$tStamp/$fType"
-    mv -n "$file" "$DownloadStorage/$tStamp/$fType" && \
-        echo "moved $file to $tStamp/$fType" || \
-        echo "failed to move $file $tStamp"
+
+    time_stamp="$(stat -c "%y" "$file" | cut -d " " -f1)"
+
+    file_type="$(get_file_type "$file" )"
+
+    mkdir -p "$storage_path/$time_stamp/$file_type"
+
+    mv -n "$file" "$storage_path/$time_stamp/$file_type" && \
+        echo "Moved $file to $time_stamp/$file_type" || \
+        echo "Failed to Move $file $time_stamp"
 done
+
+clear_empty_file
