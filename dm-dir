@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/env bash
 
 set -o pipefail
 
@@ -18,7 +18,6 @@ CURRENT_PATH="$STARTING_PATH"
 MAX_FIND_DEPTH=1
 PATH_HISTORY=()
 PATH_DEPTH=0
-QUERY=""
 
 # gets the content of CURRENT_PATH
 path_content()
@@ -75,13 +74,19 @@ sorted_path_content()
 
 main()
 {
+    local directory_content
+    local query
+    local target_path
+
     while(true); do
 
         # reset the history if the current path is the starting path
-        [ "$PATH_DEPTH" -gt 0 ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && reset_path_history
+        if [ "$PATH_DEPTH" -eq 0 ] || [ "$CURRENT_PATH" == "$STARTING_PATH" ]; then
+            reset_path_history
+        fi
 
         # files or folders in CURRENT_PATH
-        local directory_content=()
+        directory_content=()
 
         # get the content of CURRENT_PATH
         if [ "$SORT_ENTRIES" -eq 1 ]; then
@@ -96,32 +101,36 @@ main()
             continue
         fi
 
-        QUERY="$(printf "%s\n" "${directory_content[@]}" | $PROMPT)"
+        query="$(printf "%s\n" "${directory_content[@]}" | $PROMPT)"
 
         # exit if nothing was selected, and current path is the starting path
-        [ -z "$QUERY" ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && break
+        [ -z "$query" ] && [ "$CURRENT_PATH" == "$STARTING_PATH" ] && break
 
         # go back if nothing was selected
-        if [ -z "$QUERY" ]; then
+        if [ -z "$query" ]; then
             go_back_in_path
             continue
         fi
 
+        target_path="$CURRENT_PATH/$query"
+
         # break the loop if a file was selected, and output the path of the file
-        if [ -f "$CURRENT_PATH/$QUERY" ]; then
-            printf "%s\n" "$CURRENT_PATH/$QUERY" 2>/dev/null &
+        # if a directory is selected, go inside it
+        if [ -f "$target_path" ]; then
+            printf "%s\n" "$target_path" 2>/dev/null &
             break
 
-        # if a directory is selected, go inside it
-        elif [ -d "$CURRENT_PATH/$QUERY" ]; then
-
+        elif [ -d "$target_path" ]; then
             # save the current path
             append_to_path_history "$CURRENT_PATH"
 
             # append to current path
-            CURRENT_PATH="$CURRENT_PATH/$QUERY"
+            CURRENT_PATH="$target_path"
 
             continue
+
+        else
+            notify-send "$target_path"
         fi
 
     done
