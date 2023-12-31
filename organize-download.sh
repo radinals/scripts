@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 DownloadDirFiles=( "$HOME/Downloads"/* )
-DownloadStorage="$DownloadDir/.storage"
+DownloadStorage="$HOME/Downloads/.storage"
 for file in "${DownloadDirFiles[@]}"
 do
 	[ ! -f "$file" ] && continue
