@@ -64,7 +64,7 @@ do
     mkdir -p "$storage_path/$time_stamp/$file_type"
 
     mv -n "$file" "$storage_path/$time_stamp/$file_type" && \
-        echo "Moved $file to $time_stamp/$file_type" || \
+        echo "Moved $(basename "$file") to $time_stamp/$file_type" || \
         echo "Failed to Move $file $time_stamp"
 done
 
