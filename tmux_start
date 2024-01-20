@@ -72,4 +72,8 @@ tmux_start()
     tmux attach-session -t "$session_name"
 }
 
-tmux_start
+if [ $(tmux list-session | wc -l) -gt 1 ]; then
+    tmux attach
+else
+    tmux_start
+fi
