@@ -24,6 +24,7 @@ create_new_window()
 
     tmux new-window -t "$session_name" -c "$path"
 
+    # make an empty window if no command is defined
     [ -n "$cmd" ] && tmux send-keys -t "$session_name" "$cmd" C-m
 }
 
@@ -40,10 +41,10 @@ tmux_start()
 
     local win_3_title="MUSIC"
     local win_3_cmd="cmus"
+    local first_window_index="1"
 
     if ! tmux has-session -t="$session_name" 2> /dev/null; then
         # the first window is path when finished
-        sel_window="1"
 
         # create the session
         tmux new-session -ds "$session_name" -c "$HOME"
@@ -64,7 +65,7 @@ tmux_start()
             create_new_window "$session_name" "$win_3_cmd"
 
         # go back to the first window
-        tmux select-window -t "$session_name:$sel_window"
+        tmux select-window -t "$session_name:$first_window_index"
     else
         tmux detach -s "$session_name"
     fi
