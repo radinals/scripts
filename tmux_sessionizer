@@ -8,6 +8,7 @@ ProjectHome="$HOME/Programming"
 # paths that would be sessionize by default
 PROJECT_DIR=(
     "$ProjectHome/repositories"
+    "$ProjectHome/3rdparty_repo"
     "$ProjectHome/.reffrences"
     "$ProjectHome/work_in_progress"
     "$ProjectHome/python_projects"
@@ -122,9 +123,10 @@ case "$1" in
     ;;
 
     *)
-        path="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 2 \
-            -type d \( ! -path "*.git*" -o -path "__*__" \) \
-            -prune -o -name -print0 | fzf )"
+        path="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 1 \
+            -type d \( ! -path "*.*" -o -path "__*__" \) \
+            -prune -o -name -print0 2> /dev/null | \
+            fzf --header="TMUX SESSIONIZER" $FZFTHEME)"
     ;;
 esac
 

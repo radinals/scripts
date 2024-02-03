@@ -19,7 +19,7 @@ switchkill()
         sort -n | tail -n 1 | cut -d " " -f2-)"
 
     local switch_target="$(tmux list-sessions | \
-        grep -w -v "$last_active_session" | fzf | cut -d ":" -f1)"
+        grep -w -v "$last_active_session" | fzf --header="TMUX Switch'N'Kill" $FZFTHEME | cut -d ":" -f1)"
 
     [ -z "$switch_target" ] && exit 1
 
