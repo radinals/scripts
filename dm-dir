@@ -5,17 +5,41 @@ set -o pipefail
 [ ! "$(command -V "fzf")" ] || \
     [ ! "$(command -V "dmenu")" ] && exit 1
 
-# TODO: REAL COMMANDLINE FLAG PARSER
-[ -d "$1" ] && STARTING_PATH="$1" || exit 1
-
+STARTING_PATH=""
+CURRENT_PATH=""
 PROMPT="dmenu -p SELECT: -i -g 3 -l 15"
-[ "$2" == "-t" ] && PROMPT="fzf"
-
 SORT_ENTRIES=0
-[ "$3" == "-s" ] && SORT_ENTRIES=1
-
-CURRENT_PATH="$STARTING_PATH"
 MAX_FIND_DEPTH=1
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -t | --terminal)
+            PROMPT="fzf $FZFTHEME"
+            shift
+        ;;
+        -s | --sorted)
+             SORT_ENTRIES=1
+             shift
+        ;;
+        -d | --directory)
+             STARTING_PATH="$2"
+             shift
+             shift
+        ;;
+        --max-depth)
+            MAX_FIND_DEPTH=$2
+            shift
+            shift
+        ;;
+        -*|--*)
+            echo "Unknown Option $1"
+            exit 1
+        ;;
+    esac
+done
+
+[ -d "$STARTING_PATH" ] && CURRENT_PATH="$STARTING_PATH" || exit 1
+
 PATH_HISTORY=()
 PATH_DEPTH=0
 
