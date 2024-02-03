@@ -16,9 +16,10 @@ player_args=""
 [ ! "$(command -V "$player")" ] || \
     [ ! "$(command -V "dm-dir")" ] && exit 1
 
-sel_video="$(dm-dir "$vid_dir" "$1")"
+dm_dir_cmd="dm-dir -d "$vid_dir" -s $1"
+sel_video="$($dm_dir_cmd)"
 
-[ -z "$sel_video" ] && exit 1
+[ "$?" -eq 1] || [ -z "$sel_video" ] && exit 1
 
 [ "$notify" ] && notify-send "fvideo" "Opening, $(basename "$sel_video")" 2>/dev/null &
 

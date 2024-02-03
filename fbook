@@ -11,9 +11,10 @@ book_dir="$HOME/Documents/Books"
 [ ! "$(command -V "$reader")" ] || \
     [ ! "$(command -V "dm-dir")" ] && exit 1
 
-sel_book="$(dm-dir "$book_dir" "$1" -s)"
+dm_dir_cmd="dm-dir -d "$book_dir" -s $1"
+sel_book="$($dm_dir_cmd)"
 
-[ -z "$sel_book" ] && exit 1
+[ "$?" -eq 1 ] || [ -z "$sel_book" ] && exit 1
 
 [ "$notify" ] && notify-send "fbook" "Opening, $(basename "$sel_book")" 2>/dev/null &
 

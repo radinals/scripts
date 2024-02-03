@@ -10,12 +10,13 @@ reader="mcomix"
 [ ! "$(command -V "$reader")" ] || \
     [ ! "$(command -V "dm-dir")" ] && exit 1
 
-sel_comic="$(dm-dir "$comic_dir" "$1")"
+dm_dir_cmd="dm-dir -d "$comic_dir" -s $1"
+sel_comic="$($dm_dir_cmd)"
 
-[ -z "$sel_comic" ] && exit 1
+[ "$?" -eq 1 ] || [ -z "$sel_comic" ] && exit 1
 
 [ "$notify" ] && notify-send "fcomic" "Opening, $(basename "$sel_comic")" 2>/dev/null &
 
-"$reader" "$sel_comic" 2>/dev/null & 
+"$reader" "$sel_comic" 2>/dev/null &
 
 exit 0
