@@ -1,0 +1,17 @@
+#!/bin/env bash
+
+[ ! "$(command -V "dmenu")" ] && exit 1
+
+prompt="dmenu -i -l 50 -p Powermenu"
+[ "$2" = "-t" ] && prompt="fzf"
+
+prompt="$(printf "%s\n" "1. Shutdown" "2. Reboot" "3. Lock" "4. Exit" | \
+    $prompt | tr " " _)"
+
+case ${prompt} in
+    1._Shutdown) systemctl poweroff || exit 1 ;;
+    2._Reboot) systemctl reboot || exit 1 ;;
+    3._Lock) xscreensaver-command --lock || exit 1 ;;
+    4._Exit) pkill dwm || exit 1 ;;
+    *) exit 1;;
+esac
