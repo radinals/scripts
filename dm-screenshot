@@ -1,9 +1,16 @@
 #!/bin/bash
 
+set -o pipefail
+
 [ ! "$(command -V "maim")" ] || \
     [ ! "$(command -V "fzf")" ] || \
     [ ! "$(command -V "dmenu")" ] \
     && exit 1
+
+notify()
+{
+    notify-send "dm-screenshot" "Screenshot Taken!"
+}
 
 prompt="dmenu -i -l 50"
 [ "$2" = "-t" ] && prompt="fzf"
@@ -14,18 +21,23 @@ save_path="$HOME/Pictures/Screenshots"
 
 file_name="screenshot-$(date '+%d-%m-%y@%s').png"
 
-maim_cmd="maim -B -u -f png -m 5 "$save_path/$file_name" --quiet"
+maim_cmd="maim -B -u -f png -m 5 --quiet"
 
-prompt="$(printf "%s\n" "1. Take Shot" "2. Section" "3. View Screenshots" "4. FlameShot" | \
+prompt="$(printf "%s\n" \
+    "1. ClipSection" \
+    "2. Take Shot" \
+    "3. Section" \
+    "4. View Screenshots" \
+    "5. FlameShot" | \
     $prompt | tr " " _)"
 
 case ${prompt} in
-    1._Take_Shot) $maim_cmd -d 0.2 || exit 1 ;;
-    2._Section) $maim_cmd -s || exit 1 ;;
-    3._View_Screenshots) sxiv "$save_path" || exit 1 ;;
-    4._FlameShot) flameshot gui || exit 1 ;;
+    1._ClipSection) $maim_cmd -s | xclip -selection clipboard -t image/png && notify ||  exit 1 ;;
+    2._Take_Shot) $maim_cmd -d 0.2 "$save_path/$file_name" && notify || exit 1 ;;
+    3._Section) $maim_cmd -s "$save_path/$file_name" && notify || exit 1 ;;
+    4._View_Screenshots) sxiv "$save_path" && notify || exit 1 ;;
+    5._FlameShot) flameshot gui || exit 1 ;;
     *) exit 1;;
 esac
 
-[ "$(command -V "notify-send")" ] && [ -f "$save_path/$file_name" ] && \
-    notify-send "dm-screenshot" "Screenshot Taken! saved as $file_name"
+exit 0
