@@ -1,0 +1,28 @@
+#!/bin/env bash
+
+[ -z "$XDG_CONFIG_HOME" ] && \
+    DM_BOOKMARK_DIR="$HOME/.config/dm_bookmark" || DM_BOOKMARK_DIR="$XDG_CONFIG_HOME/dm_bookmark"
+
+[ ! -d "$DM_BOOKMARK_DIR" ] && mkdir -p "$DM_BOOKMARK_DIR"
+
+BOOKMARK_LIST="$DM_BOOKMARK_DIR/bookmarks"
+
+PROMPT="dmenu -p SELECT: -i -g 3 -l 15"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -t | --terminal)
+            PROMPT="fzf $FZFTHEME"
+            shift
+        ;;
+        -*|--*)
+            echo "Unknown Option $1"
+            exit 1
+        ;;
+    esac
+done
+
+sel_bookmark="$($PROMPT <<< "$(cat $BOOKMARK_LIST)")"
+[ -z "$sel_bookmark" ] && exit 0
+
+sel_link="$(awk -F " " '{print $1}' <<< "$sel_bookmark" | xclip -silent -selection clipboard)"
