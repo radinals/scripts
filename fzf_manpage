@@ -25,6 +25,7 @@ load_pages()
     # Dont add a section twice!
     grep -q "$section" <<< "${sections_added[*]}" && return 0
 
+    # delimiter = ".";  the files are named [man_entry].[section].gz
     while IFS="." read -r entry _ ; do
         manpages+=("$entry($1) ")
     done <<< "$(find "$man_path" -type f -printf "%f\n")"
