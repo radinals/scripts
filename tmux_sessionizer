@@ -79,7 +79,7 @@ create_workspace()
 
     create_new_window "$session_name" "" "$path"
 
-    create_new_window "$session_name" "lazygit" "$path" # open lazygit
+    # create_new_window "$session_name" "lazygit" "$path" # open lazygit
 
     tmux select-window -t "$session_name:$main_window"
 }
