@@ -1,0 +1,105 @@
+#!/bin/bash
+
+set -o pipefail
+
+prompt="dmenu -i -l 50"
+
+TRUE=1
+FALSE=0
+
+DISPLAYS_PRESENT=("$(xrandr | grep -v 'Screen' | \
+    grep -e "[disconnected||connected]" | cut -d " " -f1 | tr '\n' ' ')")
+
+DISPLAYS_CONNECTED=("$(xrandr | grep -v "disconnected" | \
+    grep "connected" | cut -d " " -f1 | tr '\n' ' ')")
+
+CONNECTED_DISPLAYS_INFO="$(xrandr | grep -v 'Screen' | \
+    grep -v "disconnected" | awk '{$1=$1;print}' | tr ' ' '_')"
+
+set_primary()
+{
+    local display="$1"
+    xrandr --output "$display" --primary
+}
+
+set_position()
+{
+    local display
+    local pos
+
+    display="$1"
+
+    pos=$($prompt -p 'POS[xy]:' <<< "")
+
+    [ -z "$pos" ] && return 0
+
+    xrandr --output "$display" --pos "$pos"
+}
+
+display_is_present()
+{
+    local target_display_name
+
+    target_display_name="$1"
+
+    if grep -q "$target_display_name" <<< "${DISPLAYS_PRESENT[@]}"; then
+        echo "True"
+    else
+        echo "False"
+    fi
+}
+
+set_resolution_menu()
+{
+    local target_display_name
+    local display_modes
+    local InDisplayInfo
+    local sel_resolution
+
+    target_display_name="$1"
+    InDisplayInfo=$FALSE
+
+    for line in ${CONNECTED_DISPLAYS_INFO[@]}; do
+        if grep -q -i "$target_display_name" <<< "$line"; then
+            InDisplayInfo=$TRUE
+            continue
+        elif [ "$(display_is_present "$line")" = "True" ]; then
+            InDisplayInfo=$FALSE
+            continue
+        fi
+
+        if [ "$InDisplayInfo" -eq "$TRUE" ]; then
+            display_modes+="$line "
+        fi
+    done
+
+    sel_resolution="$(printf "%s\n" ${display_modes[@]} | $prompt -p 'Select a Display Mode: ')"
+
+    [ -z "$sel_resolution" ] && return
+
+    xrandr --output "$target_display_name" --mode "$(cut -d '_' -f1 <<< "$sel_resolution")"
+}
+
+select_output_menu()
+{
+    printf "%s\n" ${DISPLAYS_CONNECTED[@]} | $prompt -p 'Select a Display: '
+}
+
+sel_display=$(select_output_menu)
+
+[ -z "$sel_display" ] && exit 0
+
+menu="$(printf "%s\n" \
+    "1. Set Resolution" \
+    "2. Set Pos" \
+    "3. Set as Primary"\
+    | $prompt | tr " " _)"
+
+case ${menu} in
+    1._Set_Resolution) set_resolution_menu "$sel_display" ;;
+    2._Set_Pos) set_position "$sel_display" ;;
+    3._Set_as_Primary) set_primary "$sel_display";;
+    *) exit 1;;
+esac
+
+exit 0
