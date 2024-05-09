@@ -1,5 +1,5 @@
 #!/bin/bash
-wp_dir="$HOME/Pictures/Wallpapers"
+wp_dir="$1"
 [ ! -d "$wp_dir" ] || [ ! "$(command -V "hsetroot")" ] && exit 1
 mapfile -d $'\0' Wallpapers < <( \
     find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' \) -print0)
