@@ -35,8 +35,10 @@ get_file_type()
         tar) filetype="archive_tar" ;;
         zip) filetype="archive_zip" ;;
         7z) filetype="archive_7z" ;;
-        docx) filetype="doc_msdocx" ;;
-        pptx) filetype="doc_mspptx" ;;
+        docx) filetype="doc_msdocument" ;;
+        doc) filetype="doc_msdocument" ;;
+        pptx) filetype="doc_powerpoint" ;;
+        ppt) filetype="doc_powerpoint" ;;
         pdf) filetype="doc_pdf" ;;
         epub) filetype="doc_epub" ;;
         md) filetype="markdown" ;;
