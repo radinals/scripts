@@ -10,6 +10,8 @@ option="$(printf "%s\n" \
     "1. Networking" "2. Screenshot" "3. Password"\
     "4. Books" "5. Videos" "6. Toggle Touchpad" \
     "7. Bookmarks" \
+    "8. Display arandr" \
+    "9. Display dm-xrandr" \
     | $prompt | tr " " _)"
 
 case ${option} in
@@ -20,5 +22,7 @@ case ${option} in
     5._Videos)              fvideo                  || exit 1 ;;
     6._Toggle_Touchpad)     toggle_touchpad         || exit 1 ;;
     7._Bookmarks)           dm-bookmarks            || exit 1 ;;
+    8._Display_arandr)      arandr                  || exit 1 ;;
+    9._Display_dm-xrandr)   dm-xrandr               || exit 1 ;;
     *) exit 0;;
 esac
