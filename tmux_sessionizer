@@ -10,7 +10,8 @@ PROJECT_DIR=(
     "$ProjectHome/repositories"
     "$ProjectHome/3rdparty_repo"
     "$ProjectHome/.reffrences"
-    "$ProjectHome/work_in_progress"
+    "$ProjectHome/work_in_progress/Ongoing"
+    "$ProjectHome/work_in_progress/Backlog"
     "$ProjectHome/python_projects"
     "$ProjectHome/godot"
 )
