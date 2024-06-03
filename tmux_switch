@@ -1,0 +1,27 @@
+#!/bin/env bash
+
+TMUX_RUNNING=$(pgrep tmux)
+
+# prints an error message and die
+perror()
+{
+    printf "tmux_sessionizer: ERROR!: %s\n" "$1" >&2
+    # if tmux is running, display the message there
+    [ -n "$TMUX_RUNNING" ] && tmux display-message "$1" >&2
+    exit 1
+}
+
+[ ! "$(command -V "tmux")" ] || [ ! "$(command -V "fzf")" ]  && \
+    perror "pre run check failed!, make sure required programs are installed.."
+
+[ -z "$TMUX_RUNNING" ] && perror "Aborting, no tmux process found."
+
+options="$(tmux list-panes -a -F \
+    "#S:#I.#P -- (#{pane_title},#{window_name},#{pane_current_command}) -- [#{pane_current_path}] " \
+    | fzf --header="TMUX SWITCH" $FZFTHEME)"
+
+[ -z "$options" ] && perror "no window(s)/session(s) found... exiting..."
+
+sel="$(cut -d ' ' -f1 <<< $options)"
+
+tmux switch -t"$sel"
