@@ -1,0 +1,8 @@
+#!/bin/env bash
+windows="$(wmctrl -l | sed -e "s/$(hostname)//g; s/N\/A//g; s/ 0 //g; s/\t/ /g" \
+    | tr -s ' ' | grep -v "SP" | cat -n | tr -s ' ' | sed -e 's/\t/. /g')"
+[ -z "$windows" ] && exit 0
+sel="$(dmenu -l 10 -i <<< "$windows")"
+[ -z "$sel" ] && exit 0
+cut -d " " -f3 <<< "$sel" | xargs wmctrl -i -a 2>/dev/null
+exit 0
