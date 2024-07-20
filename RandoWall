@@ -1,8 +1,43 @@
 #!/bin/bash
 wp_dir="$1"
+
 [ ! -d "$wp_dir" ] || [ ! "$(command -V "hsetroot")" ] && exit 1
-mapfile -d $'\0' Wallpapers < <( \
-    find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' \) -print0)
-file="${Wallpapers[$((RANDOM % ${#Wallpapers[@]} + 0))]}"
-hsetroot -fill \
-    "$file" 1>/dev/null && exit 0 || exit 1
+
+wallhist="/tmp/RandoWall.hist"
+
+# n=$(( $(ls -l "$wp_dir" | wc -l) / 2 ))
+n=$(( $(ls -l "$wp_dir" | wc -l) - 1 ))
+
+[ "$n" -le 0 ] && exit 1
+
+if [[ "$(wc -l "$wallhist" | cut -d ' ' -f1 )"  -ge "$n" ]]; then rm -f "$wallhist"; fi
+
+[ ! -f "$wallhist" ] && touch "$wallhist"
+
+mapfile -d $'\0' Wallpapers < <(
+    \find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' \) -print0)
+
+file=""
+attemps=0
+while true; do
+
+    file="${Wallpapers[$((RANDOM % ${#Wallpapers[@]} + 0))]}"
+
+    if [[ "$attemps" -ge "$n" ]];then
+        rm -f "$wallhist"
+        break;
+    fi
+
+    attemps=$attemps+1
+
+    if grep -q "$file" "$wallhist"; then
+        continue
+    fi
+
+    break
+
+done
+
+echo "$file" >> "$wallhist"
+
+hsetroot -fill "$file" 1>/dev/null && exit 0 || exit 1
