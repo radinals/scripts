@@ -24,7 +24,12 @@ touch "/tmp/picomd.lock"
 battery_num=1
 
 battery_info="/sys/class/power_supply/BAT$battery_num"
-[ ! -d "$battery_info" ] && exit 1
+
+if [ ! -d "$battery_info" ]; then 
+    [ ! "$(pgrep picom)" ] && exec picom -b >/dev/null &
+    exit 0
+fi
+    
 
 while true ; do
 
