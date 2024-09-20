@@ -31,9 +31,8 @@ while [ $# -gt 0 ]; do
             shift
             shift
         ;;
-        -*|--*)
-            echo "Unknown Option $1"
-            exit 1
+        *)
+            shift
         ;;
     esac
 done
@@ -101,6 +100,8 @@ main()
     local directory_content
     local query
     local target_path
+
+    [ -z "$(find $STARTING_PATH -mindepth 1)" ] && exit 1
 
     while(true); do
 
