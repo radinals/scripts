@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+[ -z "$NOTEDIR" ] && NOTEDIR="$HOME/Documents/Notes"
+[ ! -d "$NOTEDIR" ] && mkdir -p "$NOTEDIR"
+
+TMUX_RUNNING=$(pgrep tmux)
+
+generateFileName() {
+    local title="$1"
+    local group="$2"
+
+    # replace any whitespaces
+    title=$(tr -s ' ' _ <<< "$title")
+    group=$(tr -s ' ' _ <<< "$group")
+
+    printf "note-$group-$title-$(date +%d-%m-%Y)-$(date +%H:%M).md"
+}
+
+yesNoPrompt() {
+  local prompt="" 
+  prompt="$1"
+
+  if [ -n "$2" ];then
+      printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME <<< "$(printf "%s\n" "Yes" "No")")"
+  else
+      printf "%s" "$(dmenu -p "$prompt" -l 2  <<< "$(printf "%s\n" "Yes" "No")")"
+  fi
+
+}
+
+createNewNote() {
+
+  # GET NOTE TITLE
+  local note_title=""
+  
+  if [ -n "$1" ];then
+      note_title="$(fzf --prompt "NOTE TITLE: " $FZFTHEME --print-query  <<< "" )"
+  else
+      note_title="$(dmenu -p "NOTE TITLE:" <<< "" )"
+  fi
+
+  [ -z "$note_title" ] && exit 0
+
+  # GET NOTE GROUPS
+  
+  local note_group=""
+  local existing_groups=""
+
+  existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
+
+  if [ -n "$1" ];then
+    note_group="$(fzf --prompt "NOTE GROUP: " $FZFTHEME --print-query <<< "$groups" )"
+  else
+    note_group="$(dmenu -p "NOTE GROUP:" -l 10 <<< "$groups" )"
+  fi
+
+  [ -z "$note_group" ] &&  note_group="random"
+
+  # SET NOTE PATHS
+  local note_file=""
+  local note_path=""
+
+  note_path="$NOTEDIR/$note_group"
+  note_file="$(generateFileName "$note_title" "$note_group")"
+
+  [ -f "$note_file" ] && exit 0
+
+  local nvim_cmd=""
+  nvim_cmd="nvim \
+   -c 'norm Go' \
+   -c 'norm Go## $note_title - $note_group' \
+   -c 'norm Go### $(date +%d-%m-%Y) ~ $(date +%H:%M)' \
+   -c 'norm G2o' \
+   -c 'norm zz'  \
+   -c 'norm w'  \
+   -c 'startinsert' '$note_path/$note_file'"
+
+  # CONFIRM NOTE CREATION
+  if [ "$(yesNoPrompt "Create New Note "$note_file"?, [Yes/No]: " "$1")" == "Yes" ]; then
+       # START NOTE CREATION
+      [ ! -d "$note_path" ] && mkdir -p "$note_path"
+
+      if [ -n "$TMUX_RUNNING" ]; then 
+          tmux neww "$nvim_cmd" 
+      else
+          $TERMINAL -e "$nvim_cmd"
+      fi
+
+  fi
+}
+
+openNote() {
+    local sel_note=""
+    sel_note="$(dm-dir -d "$NOTEDIR" "$1")"
+
+    if [ -f "$sel_note" ]; then
+      if [ -n "$TMUX_RUNNING" ]; then 
+          tmux neww "nvim $sel_note"
+      else
+          $TERMINAL -e "nvim $sel_note"
+      fi
+    fi
+
+}
+
+deleteNote() {
+    local sel_note=""
+    sel_note="$(dm-dir -d "$NOTEDIR" "$1")"
+
+    if [ -f "$sel_note" ]; then
+      [ "$(yesNoPrompt "DELETE NOTE "$sel_note":" "$1")" == "Yes" ] && rm -f "$sel_note"
+    fi
+}
+
+clearEmptyGroup() {
+    find "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -empty -delete && \
+        echo "cleared empty groups"
+}
+
+# FIXME
+
+if [ "$1" == "new" ]; then
+    createNewNote  "$2"
+elif [ "$1" == "rm" ]; then
+    deleteNote "$2"
+elif [ "$1" == "rg" ]; then
+    clearEmptyGroup
+else
+    openNote "$1"
+fi
+
