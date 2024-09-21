@@ -1,19 +1,46 @@
 #!/usr/bin/env bash
 
+[ ! "$(command -V "fzf")" ] || \
+    [ ! "$(command -V "dmenu")" ] && exit 1
+
 [ -z "$NOTEDIR" ] && NOTEDIR="$HOME/Documents/Notes"
 [ ! -d "$NOTEDIR" ] && mkdir -p "$NOTEDIR"
 
 TMUX_RUNNING=$(pgrep tmux)
 
+getTime() {
+    printf "%s" "$(date +%d-%m-%Y)@$(date +%H:%M)"
+}
+
 generateFileName() {
     local title="$1"
     local group="$2"
+    local time="$3"
 
     # replace any whitespaces
     title=$(tr -s ' ' _ <<< "$title")
     group=$(tr -s ' ' _ <<< "$group")
 
-    printf "note-$group-$title-$(date +%d-%m-%Y)-$(date +%H:%M).md"
+    printf "note-$group-$title-$time.md"
+}
+
+getNvimCmd() {
+  local main_header=""
+  local sub_header=""
+  local note_path=""
+
+  main_header="$1"
+  sub_header="$2"
+  note_path="$3"
+
+  printf "%s" "nvim \
+   -c 'norm Go' \
+   -c 'norm Go## $main_header' \
+   -c 'norm Go### $sub_header' \
+   -c 'norm G2o' \
+   -c 'norm zz'  \
+   -c 'startinsert' '$note_path'"
+
 }
 
 yesNoPrompt() {
@@ -21,59 +48,60 @@ yesNoPrompt() {
   prompt="$1"
 
   if [ -n "$2" ];then
-      printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME <<< "$(printf "%s\n" "Yes" "No")")"
+      printf "%s" \
+          "$(fzf --prompt "$prompt" $FZFTHEME <<< "$(printf "%s\n" "Yes" "No")")"
   else
-      printf "%s" "$(dmenu -p "$prompt" -l 2  <<< "$(printf "%s\n" "Yes" "No")")"
+      printf "%s" \
+          "$(dmenu -p "$prompt" -l 2  <<< "$(printf "%s\n" "Yes" "No")")"
   fi
 
 }
 
+inputPrompt() {
+  local prompt=""
+  local opts=""
+
+  prompt="$1"
+  opts="$2"
+  
+  if [ -n "$3" ];then
+      printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME --print-query  <<< "$opts")"
+  else
+      printf "%s" "$(dmenu -p "$prompt" <<< "$opts")"
+  fi
+}
+
 createNewNote() {
 
-  # GET NOTE TITLE
+  # ASK FOR THE NOTE TITLE
   local note_title=""
-  
-  if [ -n "$1" ];then
-      note_title="$(fzf --prompt "NOTE TITLE: " $FZFTHEME --print-query  <<< "" )"
-  else
-      note_title="$(dmenu -p "NOTE TITLE:" <<< "" )"
-  fi
+  note_title="$(inputPrompt "NOTE TITLE: " "" "$1")"
 
   [ -z "$note_title" ] && exit 0
 
-  # GET NOTE GROUPS
-  
-  local note_group=""
+  # GET EXISTING GROUPS (if any)
   local existing_groups=""
-
   existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
 
-  if [ -n "$1" ];then
-    note_group="$(fzf --prompt "NOTE GROUP: " $FZFTHEME --print-query <<< "$groups" )"
-  else
-    note_group="$(dmenu -p "NOTE GROUP:" -l 10 <<< "$groups" )"
-  fi
+  # ASK FOR THE NOTE GROUP
+  local note_group=""
+  note_group="$(inputPrompt "NOTE GROUP: " "$groups" "$1")"
 
   [ -z "$note_group" ] &&  note_group="random"
 
   # SET NOTE PATHS
   local note_file=""
   local note_path=""
+  local time=""
 
+  time="$(getTime)"
   note_path="$NOTEDIR/$note_group"
-  note_file="$(generateFileName "$note_title" "$note_group")"
+  note_file="$(generateFileName "$note_title" "$note_group" "$time")"
 
   [ -f "$note_file" ] && exit 0
 
   local nvim_cmd=""
-  nvim_cmd="nvim \
-   -c 'norm Go' \
-   -c 'norm Go## $note_title - $note_group' \
-   -c 'norm Go### $(date +%d-%m-%Y) ~ $(date +%H:%M)' \
-   -c 'norm G2o' \
-   -c 'norm zz'  \
-   -c 'norm w'  \
-   -c 'startinsert' '$note_path/$note_file'"
+  nvim_cmd="$(getNvimCmd "$note_title - $note_group" "$time" "$note_path/$note_file")"
 
   # CONFIRM NOTE CREATION
   if [ "$(yesNoPrompt "Create New Note "$note_file"?, [Yes/No]: " "$1")" == "Yes" ]; then
@@ -108,7 +136,8 @@ deleteNote() {
     sel_note="$(dm-dir -d "$NOTEDIR" "$1")"
 
     if [ -f "$sel_note" ]; then
-      [ "$(yesNoPrompt "DELETE NOTE "$sel_note":" "$1")" == "Yes" ] && rm -f "$sel_note"
+      [ "$(yesNoPrompt "DELETE NOTE "$sel_note":" "$1")" == "Yes" ] \
+          && rm -f "$sel_note" && echo "deleted $sel_note"
     fi
 }
 
@@ -117,15 +146,55 @@ clearEmptyGroup() {
         echo "cleared empty groups"
 }
 
-# FIXME
+showHelp() {
+    printf "%s\n" \
+        "nnote (simple note management script)" \
+        "usage: nnote [flag]" \
+        "   -new(t), -nw(t)          : create a new note" \
+        "   -remove(t), -rm(t)       : remove/delete a note" \
+        "   -open(t)                 : open a note" \
+        "   -clear-empty-group, -ceg : remove empty groups" \
+        "NOTE: 't' suffix determines the prompt (fzf/dmenu)"
+}
 
-if [ "$1" == "new" ]; then
-    createNewNote  "$2"
-elif [ "$1" == "rm" ]; then
-    deleteNote "$2"
-elif [ "$1" == "rg" ]; then
-    clearEmptyGroup
-else
-    openNote "$1"
-fi
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h | -help)
+            showHelp
+            break
+        ;;
+        -nw | -new)
+            createNewNote
+            break
+        ;;
+        -nwt | -newt)
+            createNewNote "-t"
+            break
+        ;;
+        -rm | -remove)
+            deleteNote 
+            break
+        ;;
+        -rmt | -removet)
+            deleteNote "-t"
+            break
+        ;;
+        -ceg | -clear-empty-group)
+            clearEmptyGroup
+            break
+        ;;
+        -open)
+            openNote
+            break
+        ;;
+        -opent)
+            openNote "-t"
+            break
+        ;;
+        *)
+            shift
+        ;;
+    esac
+done
 
+exit 0
