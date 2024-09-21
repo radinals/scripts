@@ -137,13 +137,13 @@ deleteNote() {
 
     if [ -f "$sel_note" ]; then
       [ "$(yesNoPrompt "DELETE NOTE "$sel_note":" "$1")" == "Yes" ] \
-          && rm -f "$sel_note" && echo "deleted $sel_note"
+          && rm -f "$sel_note" && printf "%s\n" "deleted $sel_note"
     fi
 }
 
 clearEmptyGroup() {
     find "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -empty -delete && \
-        echo "cleared empty groups"
+        printf "%s\n" "cleared empty groups"
 }
 
 showHelp() {
