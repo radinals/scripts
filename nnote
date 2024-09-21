@@ -21,7 +21,7 @@ generateFileName() {
     title=$(tr -s ' ' _ <<< "$title")
     group=$(tr -s ' ' _ <<< "$group")
 
-    printf "note-$group-$title-$time.md"
+    printf "%s" "note-$group-$title-$time.md"
 }
 
 getNvimCmd() {
@@ -85,7 +85,7 @@ createNewNote() {
 
   # ASK FOR THE NOTE GROUP
   local note_group=""
-  note_group="$(inputPrompt "NOTE GROUP: " "$groups" "$1")"
+  note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups" "$1")"
 
   [ -z "$note_group" ] &&  note_group="random"
 
