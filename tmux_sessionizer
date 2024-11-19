@@ -124,6 +124,7 @@ case "$1" in
     ;;
 
     *)
+        # do not show special/hidden files
         path="$(find -L "${PROJECT_DIR[@]}" -mindepth 1 -maxdepth 1 \
             -type d \( ! -path "*.*" -o -path "__*__" \) \
             -prune -o -name -print0 2> /dev/null | \
