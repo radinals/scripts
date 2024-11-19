@@ -15,7 +15,7 @@ if [[ "$(wc -l "$wallhist" | cut -d ' ' -f1 )"  -ge "$n" ]]; then rm -f "$wallhi
 [ ! -f "$wallhist" ] && touch "$wallhist"
 
 mapfile -d $'\0' Wallpapers < <(
-    \find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' \) -print0)
+    \find "$wp_dir" -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.webp' -o -iname '*.jpeg' \) -print0)
 
 file=""
 attemps=0
