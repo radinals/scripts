@@ -1,0 +1,105 @@
+#!/bin/env bash
+
+genMakefile() {
+template_makefile="
+# Makefile for building LaTeX document
+
+# Paths
+OUTPUT_DIR = ./doc
+SOURCE_DIR = ./src
+DOC_NAME = $1
+MAIN_FILE = \$(SOURCE_DIR)/\$(DOC_NAME).tex
+OUTPUT_FILE = \$(OUTPUT_DIR)/\$(DOC_NAME).pdf
+
+# Compiler and options
+LATEX = pdflatex
+LATEX_OPTS = -output-directory \$(OUTPUT_DIR) -interaction=nonstopmode
+
+# Default target: Build the document
+all: \$(OUTPUT_FILE)
+
+# Build the PDF
+\$(OUTPUT_FILE): \$(MAIN_FILE)
+\tmkdir -p \$(OUTPUT_DIR)
+\t\$(LATEX) \$(LATEX_OPTS) $< 
+\t\$(LATEX) \$(LATEX_OPTS) $< # Run twice to ensure references are resolved
+
+# Clean intermediate files (auxiliary logs, etc.)
+clean:
+\trm -rf \$(OUTPUT_DIR)/*.aux \$(OUTPUT_DIR)/*.log \$(OUTPUT_DIR)/*.toc \$(OUTPUT_DIR)/*.out
+
+# Full clean, including generated PDF
+distclean: clean
+\trm -f \$(OUTPUT_FILE)
+
+# Preview the PDF (using xdg-open or your preferred viewer)
+preview: \$(OUTPUT_FILE)
+\txdg-open \$(OUTPUT_FILE) &
+
+# Phony targets
+.PHONY: all clean distclean preview
+"
+echo -e "$template_makefile" > "$1/Makefile"
+}
+
+genDefaultDoc() {
+
+template_doc="
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{ragged2e}
+\usepackage{multicol}
+
+\input{./base/base.tex}
+
+\lstset{
+  backgroundcolor=\color{white},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  columns=flexible,
+  frame=single,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{green},
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  numbersep=5pt,
+}
+
+\geometry{margin=1cm}
+\graphicspath { {./img/} }
+
+\pagenumbering{gobble}
+\date{}
+
+\begin{document}
+    \bf{Hello World!}
+\end{document}
+"
+echo -e "$template_doc" > "$1/src/$1.tex"
+}
+
+doc_name="$1"
+[ -z "$doc_name" ] || [ -d "$doc_name" ] && exit 1
+
+CONFHOME="$XDG_CONFIG_HOME/EzTex"
+mkdir -p $CONFHOME && echo "Created $CONFHOME"
+
+doc_name="$(echo $doc_name | tr ' ' _)"
+
+mkdir -p "$doc_name" && echo "Created $doc_name"
+mkdir -p "$doc_name/src" && echo "Created $doc_name/src"
+mkdir -p "$doc_name/img" && echo "Created $doc_name/img"
+mkdir -p "$doc_name/doc" && echo "Created $doc_name/doc"
+
+if [ -d "$CONFHOME/base" ]; then
+    cp -r  "$CONFHOME/base" "$doc_name/base" && echo "Copied of over base"
+fi
+
+genDefaultDoc "$doc_name"
+
+genMakefile "$doc_name"
