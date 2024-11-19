@@ -67,7 +67,7 @@ inputPrompt() {
   if [ -n "$3" ];then
       printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME --print-query  <<< "$opts")"
   else
-      printf "%s" "$(dmenu -p "$prompt" <<< "$opts")"
+      printf "%s" "$(dmenu -p "$prompt" <<< "$opts" | tr -d '\n')"
   fi
 }
 
