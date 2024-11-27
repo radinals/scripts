@@ -42,46 +42,6 @@ preview: \$(OUTPUT_FILE)
 echo -e "$template_makefile" > "$1/Makefile"
 }
 
-genDefaultDoc() {
-
-template_doc="
-\documentclass[12pt,a4paper]{article}
-
-\usepackage{geometry}
-\usepackage{graphicx}
-\usepackage{ragged2e}
-\usepackage{multicol}
-
-\input{./base/base.tex}
-
-\lstset{
-  backgroundcolor=\color{white},
-  basicstyle=\ttfamily\footnotesize,
-  breaklines=true,
-  columns=flexible,
-  frame=single,
-  keywordstyle=\color{blue},
-  commentstyle=\color{gray},
-  stringstyle=\color{green},
-  showstringspaces=false,
-  numbers=left,
-  numberstyle=\tiny\color{gray},
-  stepnumber=1,
-  numbersep=5pt,
-}
-
-\geometry{margin=1cm}
-\graphicspath { {./img/} }
-
-\pagenumbering{gobble}
-\date{}
-
-\begin{document}
-    \bf{Hello World!}
-\end{document}
-"
-echo -e "$template_doc" > "$1/src/$1.tex"
-}
 
 doc_name="$1"
 [ -z "$doc_name" ] || [ -d "$doc_name" ] && exit 1
@@ -96,10 +56,12 @@ mkdir -p "$doc_name/src" && echo "Created $doc_name/src"
 mkdir -p "$doc_name/img" && echo "Created $doc_name/img"
 mkdir -p "$doc_name/doc" && echo "Created $doc_name/doc"
 
+if [ -f "$CONFHOME/template/template.tex" ]; then
+    cp -r  "$CONFHOME/template/template.tex" "$doc_name/src/$doc_name.tex" && echo "Copied of src"
+fi
+
 if [ -d "$CONFHOME/base" ]; then
     cp -r  "$CONFHOME/base" "$doc_name/base" && echo "Copied of over base"
 fi
-
-genDefaultDoc "$doc_name"
 
 genMakefile "$doc_name"
