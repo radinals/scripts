@@ -8,6 +8,8 @@
 
 TMUX_RUNNING=$(pgrep tmux)
 
+USEFZF=0
+
 getTime() {
     printf "%s" "$(date +%d-%m-%Y)@$(date +%H:%M)"
 }
@@ -52,7 +54,7 @@ yesNoPrompt() {
   local prompt="" 
   prompt="$1"
 
-  if [ -n "$2" ];then
+  if [ $USEFZF ];then
       printf "%s" \
           "$(fzf --prompt "$prompt" $FZFTHEME <<< "$(printf "%s\n" "Yes" "No")")"
   else
@@ -69,7 +71,7 @@ inputPrompt() {
   prompt="$1"
   opts="$2"
   
-  if [ -n "$3" ];then
+  if [ $USEFZF ];then
       printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME --print-query  <<< "$opts")"
   else
       printf "%s" "$(dmenu -p "$prompt" <<< "$opts" | tr -d '\n')"
@@ -79,7 +81,7 @@ inputPrompt() {
 # ASK FOR THE NOTE TITLE
 getNoteTitle() {
     local note_title=""
-    note_title="$(inputPrompt "NOTE TITLE: " "" "$1")"
+    note_title="$(inputPrompt "NOTE TITLE: " "")"
 
     [ -z "$note_title" ] && exit 0
 
@@ -95,7 +97,7 @@ getNoteGroup() {
 
   # ASK FOR THE NOTE GROUP
   local note_group=""
-  note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups" "$1")"
+  note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups")"
 
   note_group="$(sanitizeText "$note_group")"
 
@@ -108,8 +110,8 @@ createNewNote() {
   local note_title
   local note_group
 
-  note_title="$(getNoteTitle "$1")"
-  note_group="$(getNoteGroup "$1")"
+  note_title="$(getNoteTitle)"
+  note_group="$(getNoteGroup)"
 
   # SET NOTE PATHS
   local note_file=""
@@ -131,7 +133,7 @@ createNewNote() {
   nvim_cmd="$(getNvimCmd "$note_title - $note_group" "$time" "$note_path/$note_file")"
 
   # CONFIRM NOTE CREATION
-  if [ "$(yesNoPrompt "Create New Note "$note_file"?, [Yes/No]: " "$1")" == "Yes" ]; then
+  if [ "$(yesNoPrompt "Create New Note "$note_file"?, [Yes/No]: ")" == "Yes" ]; then
        # START NOTE CREATION
       [ ! -d "$note_path" ] && mkdir -p "$note_path"
 
@@ -146,7 +148,7 @@ createNewNote() {
 
 openNote() {
     local sel_note=""
-    sel_note="$(dm-dir -d "$NOTEDIR" "$1")"
+    sel_note="$(dm-dir -d "$NOTEDIR")"
 
     if [ -f "$sel_note" ]; then
       if [ -n "$TMUX_RUNNING" ]; then 
@@ -160,10 +162,10 @@ openNote() {
 
 deleteNote() {
     local sel_note=""
-    sel_note="$(dm-dir -d "$NOTEDIR" "$1")"
+    sel_note="$(dm-dir -d "$NOTEDIR")"
 
     if [ -f "$sel_note" ]; then
-      [ "$(yesNoPrompt "DELETE NOTE "$sel_note":" "$1")" == "Yes" ] \
+      [ "$(yesNoPrompt "DELETE NOTE "$sel_note":")" == "Yes" ] \
           && rm -f "$sel_note" && printf "%s\n" "deleted $sel_note"
     fi
 }
@@ -195,7 +197,8 @@ while [ $# -gt 0 ]; do
             break
         ;;
         -nwt | -newt)
-            createNewNote "-t"
+            createNewNote
+            USEFZF=1
             break
         ;;
         -rm | -remove)
@@ -203,7 +206,8 @@ while [ $# -gt 0 ]; do
             break
         ;;
         -rmt | -removet)
-            deleteNote "-t"
+            deleteNote
+            USEFZF=1
             break
         ;;
         -ceg | -clear-empty-group)
@@ -215,7 +219,8 @@ while [ $# -gt 0 ]; do
             break
         ;;
         -opent)
-            openNote "-t"
+            openNote
+            USEFZF=1
             break
         ;;
         *)
