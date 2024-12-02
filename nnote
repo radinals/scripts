@@ -76,16 +76,19 @@ inputPrompt() {
   fi
 }
 
-createNewNote() {
+# ASK FOR THE NOTE TITLE
+getNoteTitle() {
+    local note_title=""
+    note_title="$(inputPrompt "NOTE TITLE: " "" "$1")"
 
-  # ASK FOR THE NOTE TITLE
-  local note_title=""
-  note_title="$(inputPrompt "NOTE TITLE: " "" "$1")"
+    [ -z "$note_title" ] && exit 0
 
-  [ -z "$note_title" ] && exit 0
+    note_title="$(sanitizeText "$note_title")"
 
- note_title="$(sanitizeText "$note_title")"
+    printf "%s" "$note_title"
+}
 
+getNoteGroup() {
   # GET EXISTING GROUPS (if any)
   local existing_groups=""
   existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
@@ -97,6 +100,16 @@ createNewNote() {
   note_group="$(sanitizeText "$note_group")"
 
   [ -z "$note_group" ] &&  note_group="random"
+
+  printf "%s" "$note_group"
+}
+
+createNewNote() {
+  local note_title
+  local note_group
+
+  note_title="$(getNoteTitle "$1")"
+  note_group="$(getNoteGroup "$1")"
 
   # SET NOTE PATHS
   local note_file=""
