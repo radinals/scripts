@@ -81,14 +81,14 @@ getNoteGroup() {
     # GET EXISTING GROUPS (if any)
     local existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
 
-  # ASK FOR THE NOTE GROUP
-  local note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups")"
+    # ASK FOR THE NOTE GROUP
+    local note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups")"
 
-  note_group="$(sanitizeText "$note_group")"
+    note_group="$(sanitizeText "$note_group")"
 
-  [ -z "$note_group" ] &&  note_group="random"
+    [ -z "$note_group" ] &&  note_group="random"
 
-  printf "%s" "$note_group"
+    printf "%s" "$note_group"
 }
 
 createNewNote() {
