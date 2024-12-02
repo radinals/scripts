@@ -14,21 +14,11 @@ getTime() {
     printf "%s" "$(date +%d-%m-%Y)@$(date +%H:%M)"
 }
 
-sanitizeText() {
-    local text="$1"
-
-    text=$(tr -s ' ' _ <<< "$text")
-    text=$(tr -d "\n" <<< "$text")
-
-    printf "%s" "$text"
-}
-
 generateFileName() {
     local title="$1"
     local group="$2"
     local time="$3"
     local filename="note-$group-$title-$time.md"
-    filename="$(sanitizeText "$filename")"
     printf "%s" "$filename"
 }
 
@@ -59,35 +49,32 @@ yesNoPrompt() {
 inputPrompt() {
     local prompt="$1"
     local opts="$2"
+    local input
 
     if [ $USEFZF ];then
-        printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME --print-query  <<< "$opts")"
+        input="$(fzf --prompt "$prompt" $FZFTHEME --print-query <<< "$opts")"
     else
-        printf "%s" "$(dmenu -p "$prompt" <<< "$opts" | tr -d '\n')"
+        input="$(dmenu -p "$prompt" <<< "$opts")"
     fi
+
+    input=$(tr -s ' ' _ <<< "$input")
+    input=$(tr -d "\n" <<< "$input")
+
+    printf "%s" "$input"
 }
 
 # ASK FOR THE NOTE TITLE
 getNoteTitle() {
-    local note_title="$(inputPrompt "NOTE TITLE: " "")"
-    note_title="$(sanitizeText "$note_title")"
-
+    local note_title="$(inputPrompt "NOTE TITLE: ")"
     [ -z "$note_title" ] && exit 0
-
     printf "%s" "$note_title"
 }
 
 getNoteGroup() {
-    # GET EXISTING GROUPS (if any)
     local existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
-
-    # ASK FOR THE NOTE GROUP
     local note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups")"
 
-    note_group="$(sanitizeText "$note_group")"
-
-    [ -z "$note_group" ] &&  note_group="random"
-
+    [ -z "$note_group" ] && note_group="random" # default group
     printf "%s" "$note_group"
 }
 
@@ -113,25 +100,33 @@ createNewNote() {
 }
 
 openNote() {
-    local sel_note="$(dm-dir -d "$NOTEDIR")"
+    local sel_note
+    if [ $USEFZF ]; then
+        sel_note="$(dm-dir -d "$NOTEDIR" -t)"
+    else
+        sel_note="$(dm-dir -d "$NOTEDIR")"
+    fi
 
-    if [ -f "$sel_note" ]; then
-        if [ -n "$TMUX_RUNNING" ]; then 
-            tmux neww "nvim $sel_note"
-        else
-            $TERMINAL -e "nvim $sel_note"
-        fi
+    [ ! -f "$sel_note" ] && exit 0
+    if [ -n "$TMUX_RUNNING" ]; then 
+        tmux neww "nvim $sel_note"
+    else
+        $TERMINAL -e "nvim $sel_note"
     fi
 }
 
 deleteNote() {
-    local sel_note="$(dm-dir -d "$NOTEDIR")"
+    local sel_note
+    if [ $USEFZF ]; then
+        sel_note="$(dm-dir -d "$NOTEDIR" -t)"
+    else
+        sel_note="$(dm-dir -d "$NOTEDIR")"
+    fi
 
-    if [ -f "$sel_note" ]; then
-        [ "$(yesNoPrompt "DELETE NOTE "$sel_note":")" == "Yes" ] \
-            && rm -f "$sel_note" && printf "%s\n" "deleted $sel_note"
-                else 
-                    printf "%s\n" "no file named "$sel_note""
+    if [ -f "$sel_note" ] && [ "$(yesNoPrompt "DELETE NOTE "$sel_note":")" == "Yes" ]; then
+        rm -f "$sel_note" && printf "%s\n" "deleted $sel_note"
+    else 
+        printf "%s\n" "no file named "$sel_note""
     fi
 }
 
