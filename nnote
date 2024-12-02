@@ -15,7 +15,7 @@ getTime() {
 }
 
 sanitizeText() {
-    local text=$1
+    local text="$1"
 
     text=$(tr -s ' ' _ <<< "$text")
     text=$(tr -d "\n" <<< "$text")
@@ -27,18 +27,15 @@ generateFileName() {
     local title="$1"
     local group="$2"
     local time="$3"
-
-    printf "%s" "note-$group-$title-$time.md"
+    local filename="note-$group-$title-$time.md"
+    filename="$(sanitizeText "$filename")"
+    printf "%s" "$filename"
 }
 
 getNvimCmd() {
-  local main_header=""
-  local sub_header=""
-  local note_path=""
-
-  main_header="$1"
-  sub_header="$2"
-  note_path="$3"
+  local main_header="$1"
+  local sub_header="$2"
+  local note_path="$3"
 
   printf "%s" "nvim \
    -c 'norm Go' \
@@ -47,21 +44,16 @@ getNvimCmd() {
    -c 'norm G2o' \
    -c 'norm zz'  \
    -c 'startinsert' '$note_path'"
-
 }
 
 yesNoPrompt() {
-  local prompt="" 
-  prompt="$1"
+  local prompt="$1"
 
   if [ $USEFZF ];then
-      printf "%s" \
-          "$(fzf --prompt "$prompt" $FZFTHEME <<< "$(printf "%s\n" "Yes" "No")")"
+      printf "%s" "$(fzf --prompt "$prompt" $FZFTHEME <<< "$(printf "%s\n" "Yes" "No")")"
   else
-      printf "%s" \
-          "$(dmenu -p "$prompt" -l 2  <<< "$(printf "%s\n" "Yes" "No")")"
+      printf "%s" "$(dmenu -p "$prompt" -l 2  <<< "$(printf "%s\n" "Yes" "No")")"
   fi
-
 }
 
 inputPrompt() {
@@ -92,12 +84,10 @@ getNoteTitle() {
 
 getNoteGroup() {
   # GET EXISTING GROUPS (if any)
-  local existing_groups=""
-  existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
+  local existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
 
   # ASK FOR THE NOTE GROUP
-  local note_group=""
-  note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups")"
+  local note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups")"
 
   note_group="$(sanitizeText "$note_group")"
 
@@ -107,48 +97,28 @@ getNoteGroup() {
 }
 
 createNewNote() {
-  local note_title
-  local note_group
+  local time="$(getTime)"
+  local note_title="$(getNoteTitle)"
+  local note_group="$(getNoteGroup)"
+  local filepath="$NOTEDIR/$note_group"
+  local filename="$(generateFileName "$note_title" "$note_group" "$time")"
 
-  note_title="$(getNoteTitle)"
-  note_group="$(getNoteGroup)"
+  [ -f "$filepath/$filename" ] && exit 0
 
-  # SET NOTE PATHS
-  local note_file=""
-  local note_path=""
-  local time=""
+  local nvim_cmd="$(getNvimCmd "$note_title - $note_group" "$time" "$filepath/$filename")"
 
-  time="$(getTime)"
-  note_path="$NOTEDIR/$note_group"
-  note_file="$(generateFileName "$note_title" "$note_group" "$time")"
-
-  # sanitize the text
-  note_file="$(sanitizeText "$note_file")"
-  note_path="$(sanitizeText "$note_path")"
-  time="$(sanitizeText "$time")"
-
-  [ -f "$note_file" ] && exit 0
-
-  local nvim_cmd=""
-  nvim_cmd="$(getNvimCmd "$note_title - $note_group" "$time" "$note_path/$note_file")"
-
-  # CONFIRM NOTE CREATION
-  if [ "$(yesNoPrompt "Create New Note "$note_file"?, [Yes/No]: ")" == "Yes" ]; then
-       # START NOTE CREATION
-      [ ! -d "$note_path" ] && mkdir -p "$note_path"
-
+  if [ "$(yesNoPrompt "Create New Note "$filename"?, [Yes/No]: ")" == "Yes" ]; then
+      [ ! -d "$filepath" ] && mkdir -p "$filepath"
       if [ -n "$TMUX_RUNNING" ]; then 
           tmux neww "$nvim_cmd" 
       else
           $TERMINAL -e "$nvim_cmd"
       fi
-
   fi
 }
 
 openNote() {
-    local sel_note=""
-    sel_note="$(dm-dir -d "$NOTEDIR")"
+    local sel_note="$(dm-dir -d "$NOTEDIR")"
 
     if [ -f "$sel_note" ]; then
       if [ -n "$TMUX_RUNNING" ]; then 
@@ -161,12 +131,13 @@ openNote() {
 }
 
 deleteNote() {
-    local sel_note=""
-    sel_note="$(dm-dir -d "$NOTEDIR")"
+    local sel_note="$(dm-dir -d "$NOTEDIR")"
 
     if [ -f "$sel_note" ]; then
       [ "$(yesNoPrompt "DELETE NOTE "$sel_note":")" == "Yes" ] \
           && rm -f "$sel_note" && printf "%s\n" "deleted $sel_note"
+    else 
+        printf "%s\n" "no file named "$sel_note""
     fi
 }
 
