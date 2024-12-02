@@ -12,14 +12,19 @@ getTime() {
     printf "%s" "$(date +%d-%m-%Y)@$(date +%H:%M)"
 }
 
+sanitizeText() {
+    local text=$1
+
+    text=$(tr -s ' ' _ <<< "$text")
+    text=$(tr -d "\n" <<< "$text")
+
+    printf "%s" "$text"
+}
+
 generateFileName() {
     local title="$1"
     local group="$2"
     local time="$3"
-
-    # replace any whitespaces
-    title=$(tr -s ' ' _ <<< "$title")
-    group=$(tr -s ' ' _ <<< "$group")
 
     printf "%s" "note-$group-$title-$time.md"
 }
@@ -79,6 +84,8 @@ createNewNote() {
 
   [ -z "$note_title" ] && exit 0
 
+ note_title="$(sanitizeText "$note_title")"
+
   # GET EXISTING GROUPS (if any)
   local existing_groups=""
   existing_groups="$(find -L "$NOTEDIR" -maxdepth 1 -mindepth 1 -type d -printf "%f\n")"
@@ -86,6 +93,8 @@ createNewNote() {
   # ASK FOR THE NOTE GROUP
   local note_group=""
   note_group="$(inputPrompt "NOTE GROUP: " "$existing_groups" "$1")"
+
+  note_group="$(sanitizeText "$note_group")"
 
   [ -z "$note_group" ] &&  note_group="random"
 
@@ -97,6 +106,11 @@ createNewNote() {
   time="$(getTime)"
   note_path="$NOTEDIR/$note_group"
   note_file="$(generateFileName "$note_title" "$note_group" "$time")"
+
+  # sanitize the text
+  note_file="$(sanitizeText "$note_file")"
+  note_path="$(sanitizeText "$note_path")"
+  time="$(sanitizeText "$time")"
 
   [ -f "$note_file" ] && exit 0
 
