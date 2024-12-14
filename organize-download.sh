@@ -68,9 +68,11 @@ do
 
     file_type="$(get_file_type "$file" )"
 
-    mkdir -p "$storage_path/$time_stamp/$file_type"
+    filepath="$storage_path/$file_type/$time_stamp" 
 
-    mv -n "$file" "$storage_path/$time_stamp/$file_type" && \
+    [ ! -d "$filepath" ] && mkdir -p "$filepath"
+
+    mv -n "$file" "$filepath" && \
         echo "Moved $(basename "$file") to $time_stamp/$file_type" || \
         echo "Failed to Move $file $time_stamp"
 done
