@@ -12,7 +12,7 @@ notify()
     notify-send "dm-screenshot" "Screenshot Taken!"
 }
 
-prompt="dmenu -c -i -bw 1 -l 50"
+prompt="dmenu -p Screenshot_Options -np -c -i -bw 1 -l 50"
 [ "$2" = "-t" ] && prompt="fzf"
 
 save_path="$HOME/Pictures/Screenshots"

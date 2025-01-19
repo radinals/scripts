@@ -2,7 +2,7 @@
 
 set -o pipefail
 
-prompt="dmenu -i -l 50"
+prompt="dmenu -c -i -bw 1 -l 50"
 
 TRUE=1
 FALSE=0

@@ -7,7 +7,7 @@ set -o pipefail
 
 STARTING_PATH=""
 CURRENT_PATH=""
-PROMPT="dmenu -p SELECT: -i -g 3 -l 15"
+PROMPT="dmenu -c -bw 2 -p SELECT: -i -g 2 -l 10"
 SORT_ENTRIES=0
 MAX_FIND_DEPTH=1
 

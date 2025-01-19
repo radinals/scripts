@@ -2,7 +2,7 @@
 
 [ ! "$(command -V "dmenu")" ] && exit 1
 
-prompt="dmenu -i -l 50 -p Powermenu"
+prompt="dmenu -c -i -bw 2 -l 50 -p Powermenu"
 [ "$2" = "-t" ] && prompt="fzf"
 
 prompt="$(printf "%s\n" "1. Shutdown" "2. Reboot" "3. Lock" "4. Exit" | \
