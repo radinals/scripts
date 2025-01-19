@@ -7,6 +7,16 @@ ProjectHome="$HOME/Programming"
 
 # paths that would be sessionize by default
 PROJECT_DIR=(
+    "$ProjectHome/repositories/CPPProjects"
+    "$ProjectHome/repositories/PythonProjects"
+    "$ProjectHome/repositories/QtProjects"
+    "$ProjectHome/repositories/RandomScripts"
+    "$ProjectHome/repositories/SDLProjects"
+    "$ProjectHome/repositories/Suckless"
+    "$ProjectHome/repositories/Tools"
+    "$ProjectHome/repositories/Tutorials"
+    "$ProjectHome/repositories/Kuliah"
+    "$ProjectHome/repositories/LatexDocs"
     "$ProjectHome/repositories"
     "$ProjectHome/3rdparty_repo"
     "$ProjectHome/.reffrences"
@@ -36,6 +46,28 @@ path_is_valid()
 is_godot_project()
 {
     [ -f "$1/project.godot" ] && return 0 || return 1
+}
+
+# should it open a text editor?
+should_open_texteditor()
+{
+    local rules
+    local path
+
+    path="$1"
+    rules=(
+        "Makefile"
+        "CMakeLists.txt"
+        ".git"
+    )
+
+    for rule in "${rules[@]}"; do
+        if [ -f "$path/$rule" ] || [ -d "$path/$rule" ]; then
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 # setups nvim for godot
@@ -75,11 +107,11 @@ create_workspace()
 
     if is_godot_project "$path"; then
         setup_godot
-    else
+    elif should_open_texteditor "$path"; then
         tmux send-keys -t "$session_name" "$TEXT_EDITOR" C-m
     fi
 
-    create_new_window "$session_name" "" "$path"
+    # create_new_window "$session_name" "" "$path"
 
     create_new_window "$session_name" "onefetch" "$path" # open lazygit
 
