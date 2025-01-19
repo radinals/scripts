@@ -1,6 +1,7 @@
 #!/bin/env bash
 
 STARTUP_WINDOWS=(
+    "fastfetch"
     "calcurse"
     "ranger"
     "cmus"
