@@ -1,0 +1,32 @@
+#!/bin/env bash
+
+outfile="$1"
+
+[ -z "$outfile" ] && exit 1
+
+printf "%s\n" "\documentclass{article}" \
+              "\usepackage{graphicx}" \
+              "\usepackage{geometry}" \
+              "\graphicspath{{$(pwd)}}" \
+              "\geometry{a4paper, margin=0cm}" \
+              "\begin{document}" \
+              "\pagenumbering{gobble}" \
+              "\begin{center}" > "$outfile.tex"
+
+for file in "$@" ; do
+    [ "$file" == "$outfile" ] && continue
+    [ ! -f "$file" ] && continue
+    printf "%s\n" "\includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{${file%.*}}" >> "$outfile.tex"
+    printf "%s\n" "\newpage" >> "$outfile.tex"
+done
+
+printf "%s\n" "\end{center}" >> "$outfile.tex"
+printf "%s\n" "\end{document}" >> "$outfile.tex"
+
+pdflatex "$outfile.tex" -o "$outfile.pdf" 1>/dev/null
+
+[ -f "$outfile.tex" ] && rm -f "$outfile.tex"
+[ -f "$outfile.log" ] && rm -f "$outfile.log"
+[ -f "$outfile.aux" ] && rm -f "$outfile.aux"
+
+exit 0
